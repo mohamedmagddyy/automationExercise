@@ -62,14 +62,10 @@ public class DriverFactory {
         driverThreadLocal.set(driver);
     }
 
+    // ✅ بيرجع null بدل ما يعمل exception
+    // عشان BasePage تتعمل بدون مشاكل قبل ما الـ driver يتعمل
     public static WebDriver getDriver() {
-        WebDriver driver = driverThreadLocal.get();
-
-        if (driver == null) {
-            throw new IllegalStateException("Driver not initialized");
-        }
-
-        return driver;
+        return driverThreadLocal.get();
     }
 
     public static void quitDriver() {

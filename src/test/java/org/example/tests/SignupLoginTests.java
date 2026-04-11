@@ -3,12 +3,12 @@ package org.example.tests;
 import io.qameta.allure.*;
 import org.example.base.BaseTest;
 import org.example.pages.SignupLoginPage;
-import org.example.utils.AllureUtils;
 import org.example.utils.ConfigReader;
 import org.example.utils.TestDataReader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.testng.Assert;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import io.qameta.allure.Allure;
 
@@ -21,7 +21,14 @@ public class SignupLoginTests extends BaseTest {
 
     private static final Logger logger = LogManager.getLogger(SignupLoginTests.class);
 
-    private final SignupLoginPage page = new SignupLoginPage();
+    private SignupLoginPage page;
+
+    @BeforeMethod(alwaysRun = true, dependsOnMethods = "setup")
+    public void initPage() {
+        page = new SignupLoginPage();
+        page.acceptConsentIfPresent(); // ✅ بتقفل الـ popup قبل أي test
+        logger.info("SignupLoginPage initialized");
+    }
 
     // =========================
     // TC01 - Register User
@@ -94,6 +101,7 @@ public class SignupLoginTests extends BaseTest {
                 "Test Data",
                 "Email: " + TestDataReader.getProperty("valid.email")
         );
+
         Allure.step("Open login page", () ->
                 getDriver().get(ConfigReader.getBaseUrl() + "/login"));
 

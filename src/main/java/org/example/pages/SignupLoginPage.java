@@ -3,6 +3,7 @@ package org.example.pages;
 import org.example.base.BasePage;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.Select;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -77,6 +78,8 @@ public class SignupLoginPage extends BasePage {
     // Error messages
     private static final By loginErrorMessage = By.cssSelector("p[style='color: red;']");
     private static final By signupErrorMessage = By.cssSelector("p[style='color: red;']");
+
+    private static final By consentButton = By.cssSelector("button.fc-button.fc-cta-consent.fc-primary-button");
 
     public SignupLoginPage() {
         super();
@@ -384,5 +387,16 @@ public class SignupLoginPage extends BasePage {
         Select select = new Select(driver.findElement(locator));
         select.selectByVisibleText(text);
         logger.info("Selected text: " + text + " from dropdown: " + locator);
+    }
+
+    public void acceptConsentIfPresent() {
+        try {
+            WebElement btn = driver.findElement(consentButton);
+            if (btn.isDisplayed()) {
+                btn.click();
+            }
+        } catch (Exception e) {
+            // مفيش popup - كمل عادي
+        }
     }
 }

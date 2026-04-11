@@ -10,79 +10,75 @@ import org.openqa.selenium.edge.EdgeOptions;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-/**
- * DriverFactory - Manages WebDriver initialization using Singleton and ThreadLocal pattern
- */
 public class DriverFactory {
 
     private static final ThreadLocal<WebDriver> driverThreadLocal = new ThreadLocal<>();
     private static final Logger logger = LogManager.getLogger(DriverFactory.class);
 
-    /**
-     * Initialize the WebDriver based on browser type
-     *
-     * @param browserType Browser type (chrome/edge)
-     */
     public static void initializeDriver(String browserType) {
-        WebDriver driver = null;
+
+        if (browserType == null || browserType.isEmpty()) {
+            throw new IllegalArgumentException("Browser type cannot be null");
+        }
+
+        WebDriver driver;
 
         switch (browserType.toLowerCase()) {
+
             case "chrome":
                 WebDriverManager.chromedriver().setup();
+
                 ChromeOptions chromeOptions = new ChromeOptions();
+
                 if (Boolean.parseBoolean(ConfigReader.getProperty("headless.mode"))) {
-                    chromeOptions.addArguments("--headless");
+                    chromeOptions.addArguments("--headless=new");
                 }
-                chromeOptions.addArguments("--disable-gpu");
-                chromeOptions.addArguments("--window-size=1920,1080");
+
+                chromeOptions.addArguments("--start-maximized");
+
                 driver = new ChromeDriver(chromeOptions);
-                logger.info("Chrome driver initialized");
+                logger.info("Chrome driver started");
                 break;
 
             case "edge":
                 WebDriverManager.edgedriver().setup();
+
                 EdgeOptions edgeOptions = new EdgeOptions();
+
                 if (Boolean.parseBoolean(ConfigReader.getProperty("headless.mode"))) {
-                    edgeOptions.addArguments("--headless");
+                    edgeOptions.addArguments("--headless=new");
                 }
-                edgeOptions.addArguments("--disable-gpu");
-                edgeOptions.addArguments("--window-size=1920,1080");
+
+                edgeOptions.addArguments("--start-maximized");
+
                 driver = new EdgeDriver(edgeOptions);
-                logger.info("Edge driver initialized");
+                logger.info("Edge driver started");
                 break;
 
             default:
-                logger.error("Unsupported browser: " + browserType);
-                throw new IllegalArgumentException("Unsupported browser: " + browserType);
+                throw new RuntimeException("Unsupported browser: " + browserType);
         }
 
-        driver.manage().window().maximize();
         driverThreadLocal.set(driver);
     }
 
-    /**
-     * Get the WebDriver instance
-     *
-     * @return WebDriver instance
-     */
     public static WebDriver getDriver() {
         WebDriver driver = driverThreadLocal.get();
+
         if (driver == null) {
-            logger.error("Driver not initialized. Call initializeDriver() first.");
-            throw new IllegalStateException("Driver not initialized. Call initializeDriver() first.");
+            throw new IllegalStateException("Driver not initialized");
         }
+
         return driver;
     }
 
-    /**
-     * Quit the WebDriver instance and remove from ThreadLocal
-     */
     public static void quitDriver() {
         WebDriver driver = driverThreadLocal.get();
+
         if (driver != null) {
             driver.quit();
             driverThreadLocal.remove();
-            logger.info("Driver quit and removed from ThreadLocal");
+            logger.info("Driver closed");
         }
     }
 }

@@ -13,8 +13,8 @@ public class ProductsPage extends BasePage {
      *
      * @param driver WebDriver instance
      */
-    public ProductsPage(WebDriver driver) {
-        super(driver);
+    public ProductsPage() {
+        super();
     }
 
     /**

@@ -14,8 +14,8 @@ public class HomePage extends BasePage {
      *
      * @param driver WebDriver instance
      */
-    public HomePage(WebDriver driver) {
-        super(driver);
+    public HomePage() {
+        super();
     }
 
     /**

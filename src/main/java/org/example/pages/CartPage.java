@@ -13,8 +13,8 @@ public class CartPage extends BasePage {
      *
      * @param driver WebDriver instance
      */
-    public CartPage(WebDriver driver) {
-        super(driver);
+    public CartPage( ) {
+        super();
     }
 
     /**

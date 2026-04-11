@@ -1,7 +1,7 @@
 package org.example.listeners;
 
 import org.example.utils.ConfigReader;
-import org.example.utils.ExtentReportManager;
+
 import org.example.utils.ScreenshotUtils;
 import org.example.driver.DriverFactory;
 import org.testng.ITestListener;
@@ -27,8 +27,8 @@ public class TestListener implements ITestListener {
         logger.info("Test started: " + testName);
 
         // Create ExtentTest
-        ExtentReportManager.createTest(testName);
-        ExtentReportManager.getTest().info("Test Started: " + testName);
+
+
     }
 
     /**
@@ -41,7 +41,7 @@ public class TestListener implements ITestListener {
         String testName = result.getMethod().getMethodName();
         logger.info("Test passed: " + testName);
 
-        ExtentReportManager.getTest().pass("Test Passed: " + testName);
+
     }
 
     /**
@@ -58,8 +58,8 @@ public class TestListener implements ITestListener {
         logger.error("Test failed: " + testName + " - " + throwable.getMessage());
 
         // Log failure in ExtentReports
-        ExtentReportManager.getTest().fail("Test Failed: " + testName);
-        ExtentReportManager.getTest().fail(throwable);
+
+
 
         // Take screenshot on failure if enabled
         if (ConfigReader.isScreenshotOnFailure()) {
@@ -72,7 +72,7 @@ public class TestListener implements ITestListener {
                 );
 
                 if (screenshotPath != null) {
-                    ExtentReportManager.getTest().addScreenCaptureFromPath(screenshotPath);
+
                     logger.info("Screenshot captured for failed test: " + testName);
                 }
             } catch (Exception e) {
@@ -91,7 +91,7 @@ public class TestListener implements ITestListener {
         String testName = result.getMethod().getMethodName();
         logger.warn("Test skipped: " + testName);
 
-        ExtentReportManager.getTest().skip("Test Skipped: " + testName);
+
     }
 
     /**

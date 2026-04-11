@@ -1,5 +1,6 @@
 package org.example.base;
 
+import org.example.driver.DriverFactory;
 import org.example.utils.WaitUtils;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
@@ -15,13 +16,10 @@ public class BasePage {
     protected WebDriver driver;
     protected static final Logger logger = LogManager.getLogger(BasePage.class);
 
-    /**
-     * Constructor to initialize the WebDriver
-     *
-     * @param driver WebDriver instance
-     */
-    public BasePage(WebDriver driver) {
-        this.driver = driver;
+
+
+    public BasePage() {
+        this.driver = DriverFactory.getDriver();
     }
 
     /**

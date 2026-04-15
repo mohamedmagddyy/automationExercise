@@ -8,11 +8,11 @@ import org.openqa.selenium.WebDriver;
  */
 public class CartPage extends BasePage {
 
-    /**
-     * Constructor
-     *
-     * @param driver WebDriver instance
-     */
+
+
+
+
+
     public CartPage( ) {
         super();
     }

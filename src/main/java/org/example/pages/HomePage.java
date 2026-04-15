@@ -2,17 +2,43 @@ package org.example.pages;
 
 import org.example.base.BasePage;
 import org.example.utils.ActionsHelper;
-import org.openqa.selenium.WebDriver;
+import org.example.utils.WaitUtils;
+import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * HomePage - Page Object for Home page
  */
 public class HomePage extends BasePage {
 
+    private static final Logger logger = LogManager.getLogger(HomePage.class);
+
+    // ==================== Navigation ====================
+    private static final By testCasesLink = By.cssSelector("a[href='/test_cases']");
+    private static final By productsLink = By.cssSelector("a[href='/products']");
+    private static final By cartLink = By.cssSelector("a[href='/view_cart']");
+    private static final By contactUsLink = By.cssSelector("a[href='/contact_us']");
+
+    // ==================== Subscription ====================
+    private static final By subscriptionEmail = By.id("susbscribe_email");
+    private static final By subscribeBtn = By.id("subscribe");
+    private static final By subscriptionSuccess = By.cssSelector("div.alert-success");
+
+    // ==================== Scroll Up ====================
+    private static final By scrollUpArrow = By.id("scrollUp");
+
+    // ==================== Recommended Products ====================
+    private static final By recommendedProductsSection = By.cssSelector("div.recommended_items");
+    private static final By firstRecommendedAddToCart = By.xpath("//div[@class='recommended_items']//a[contains(@class,'add-to-cart')][1]");
+    private static final By continueShoppingBtn = By.cssSelector("button[data-dismiss='modal']");
+
+    // ==================== Footer ====================
+    private static final By footer = By.cssSelector("footer");
+
     /**
      * Constructor
-     *
-     * @param driver WebDriver instance
      */
     public HomePage() {
         super();
@@ -22,7 +48,8 @@ public class HomePage extends BasePage {
      * Navigate to home page
      */
     public void navigateToHome() {
-        // TODO: implement
+        logger.info("Navigating to home page");
+        // Navigation is handled by BaseTest setup
     }
 
     /**
@@ -31,14 +58,16 @@ public class HomePage extends BasePage {
      * @param email Email address
      */
     public void enterSubscriptionEmail(String email) {
-        // TODO: implement
+        logger.info("Entering subscription email: " + email);
+        sendKeys(subscriptionEmail, email);
     }
 
     /**
      * Click subscribe button
      */
     public void clickSubscribeButton() {
-        // TODO: implement
+        logger.info("Clicking subscribe button");
+        click(subscribeBtn);
     }
 
     /**
@@ -47,22 +76,40 @@ public class HomePage extends BasePage {
      * @return Success message
      */
     public String getSubscriptionSuccessMessage() {
-        // TODO: implement
-        return "";
-    }
-
-    /**
-     * Click scroll up arrow button
-     */
-    public void clickScrollUpArrowButton() {
-        // TODO: implement
+        logger.info("Getting subscription success message");
+        return getText(subscriptionSuccess);
     }
 
     /**
      * Scroll down to footer
      */
     public void scrollDownToFooter() {
+        logger.info("Scrolling down to footer");
         ActionsHelper.scrollToBottom(driver);
+        // Wait for footer to be visible
+        WaitUtils.waitForVisibility(driver, footer);
+    }
+
+    /**
+     * Click scroll up arrow button
+     */
+    public void clickScrollUpArrowButton() {
+        logger.info("Clicking scroll up arrow button");
+        // First scroll down to make the arrow visible
+        scrollDownToFooter();
+        // Click the scroll up arrow
+        click(scrollUpArrow);
+        logger.info("Scroll up arrow clicked");
+    }
+
+    /**
+     * Scroll to top of the page using JavaScript
+     */
+    public void scrollToTop() {
+        logger.info("Scrolling to top of page");
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+        js.executeScript("window.scrollTo(0, 0);");
+        logger.info("Page scrolled to top");
     }
 
     /**
@@ -71,14 +118,68 @@ public class HomePage extends BasePage {
      * @return true if at top, false otherwise
      */
     public boolean isScrolledToTop() {
-        // TODO: implement
-        return false;
+        logger.info("Checking if page is scrolled to top");
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+        Long scrollY = (Long) js.executeScript("return window.pageYOffset;");
+        boolean isAtTop = scrollY == 0;
+        logger.info("Page scroll position: " + scrollY + ", is at top: " + isAtTop);
+        return isAtTop;
     }
 
     /**
      * Add first recommended item to cart
      */
     public void addFirstRecommendedItemToCart() {
-        // TODO: implement
+        logger.info("Adding first recommended item to cart");
+
+        // Scroll to recommended products section
+        ActionsHelper.scrollToElement(driver, driver.findElement(recommendedProductsSection));
+
+        // Click add to cart for first recommended product
+        click(firstRecommendedAddToCart);
+        logger.info("Clicked add to cart for first recommended product");
+
+        // Handle the modal by clicking continue shopping
+        try {
+            WaitUtils.waitForVisibility(driver, continueShoppingBtn);
+            click(continueShoppingBtn);
+            logger.info("Clicked continue shopping to close modal");
+        } catch (Exception e) {
+            logger.warn("Continue shopping button not found or modal didn't appear: " + e.getMessage());
+        }
     }
+
+    /**
+     * Navigate to test cases page
+     */
+    public void navigateToTestCases() {
+        logger.info("Navigating to test cases page");
+        click(testCasesLink);
+    }
+
+    /**
+     * Navigate to products page
+     */
+    public void navigateToProducts() {
+        logger.info("Navigating to products page");
+        click(productsLink);
+    }
+
+    /**
+     * Navigate to cart
+     */
+    public void navigateToCart() {
+        logger.info("Navigating to cart");
+        click(cartLink);
+    }
+
+    /**
+     * Navigate to contact us
+     */
+    public void navigateToContactUs() {
+        logger.info("Navigating to contact us page");
+        click(contactUsLink);
+    }
+
+
 }

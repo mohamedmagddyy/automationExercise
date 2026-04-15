@@ -8,11 +8,9 @@ import org.openqa.selenium.WebDriver;
  */
 public class ProductsPage extends BasePage {
 
-    /**
-     * Constructor
-     *
-     * @param driver WebDriver instance
-     */
+
+
+
     public ProductsPage() {
         super();
     }

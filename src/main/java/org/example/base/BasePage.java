@@ -2,156 +2,194 @@ package org.example.base;
 
 import org.example.driver.DriverFactory;
 import org.example.utils.WaitUtils;
-import org.openqa.selenium.By;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+import org.example.utils.AlertHandler;
+import org.openqa.selenium.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-/**
- * Base Page Class - Contains common methods for all page objects
- */
 public class BasePage {
 
     protected WebDriver driver;
     protected static final Logger logger = LogManager.getLogger(BasePage.class);
-
-
 
     public BasePage() {
         this.driver = DriverFactory.getDriver();
     }
 
     /**
-     * Click on a WebElement
-     *
-     * @param element WebElement to click
+     * Prepare for interaction by handling any blocking UI elements
+     * Called automatically before critical actions
      */
-    public void click(WebElement element) {
-        WaitUtils.waitForClickability(driver, element);
-        element.click();
-        logger.info("Clicked on element");
+    protected void prepareForInteraction() {
+        try {
+            AlertHandler.handleAllBlockersIfPresent(driver);
+        } catch (Exception e) {
+            logger.debug("Error during interaction preparation: " + e.getMessage());
+        }
     }
 
     /**
-     * Click on an element using By locator
-     *
-     * @param locator By locator of the element
+     * Safe click - handles overlays and retries on ElementNotInteractableException
      */
     public void click(By locator) {
-        WaitUtils.waitForClickability(driver, locator);
-        driver.findElement(locator).click();
-        logger.info("Clicked on element: " + locator);
+        try {
+            prepareForInteraction();
+            WaitUtils.waitForClickability(driver, locator);
+            WebElement element = driver.findElement(locator);
+            scrollIntoViewIfNeeded(element);
+            element.click();
+            logger.info("Clicked: " + locator);
+        } catch (ElementNotInteractableException e) {
+            logger.warn("Element not interactable on first attempt, handling overlays and retrying");
+            prepareForInteraction();
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException ignored) {
+            }
+            WaitUtils.waitForClickability(driver, locator);
+            WebElement element = driver.findElement(locator);
+            scrollIntoViewIfNeeded(element);
+            element.click();
+            logger.info("Successfully clicked after handling overlays: " + locator);
+        }
     }
 
     /**
-     * Send keys to a WebElement
-     *
-     * @param element WebElement to send keys to
-     * @param text    Text to send
+     * Safe click on WebElement
      */
-    public void sendKeys(WebElement element, String text) {
-        WaitUtils.waitForVisibility(driver, element);
-        element.clear();
-        element.sendKeys(text);
-        logger.info("Entered text: " + text);
+    public void click(WebElement element) {
+        try {
+            prepareForInteraction();
+            element = waitForElementClickable(element);
+            scrollIntoViewIfNeeded(element);
+            element.click();
+            logger.info("Clicked WebElement");
+        } catch (ElementNotInteractableException e) {
+            logger.warn("Element not interactable on first attempt, handling overlays and retrying");
+            prepareForInteraction();
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException ignored) {
+            }
+            element = waitForElementClickable(element);
+            scrollIntoViewIfNeeded(element);
+            element.click();
+            logger.info("Successfully clicked WebElement after handling overlays");
+        }
     }
 
     /**
-     * Send keys to an element using By locator
-     *
-     * @param locator By locator of the element
-     * @param text    Text to send
+     * Safe sendKeys - handles overlays and retries on ElementNotInteractableException
      */
     public void sendKeys(By locator, String text) {
-        WaitUtils.waitForVisibility(driver, locator);
-        WebElement element = driver.findElement(locator);
-        element.clear();
-        element.sendKeys(text);
-        logger.info("Entered text in element: " + locator);
+        try {
+            prepareForInteraction();
+            WaitUtils.waitForVisibility(driver, locator);
+            WebElement element = driver.findElement(locator);
+            scrollIntoViewIfNeeded(element);
+            element.clear();
+            element.sendKeys(text);
+            logger.info("Typed in element: " + locator);
+        } catch (ElementNotInteractableException e) {
+            logger.warn("Element not interactable on first attempt, handling overlays and retrying");
+            prepareForInteraction();
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException ignored) {
+            }
+            WaitUtils.waitForVisibility(driver, locator);
+            WebElement element = driver.findElement(locator);
+            scrollIntoViewIfNeeded(element);
+            element.clear();
+            element.sendKeys(text);
+            logger.info("Successfully typed after handling overlays: " + text);
+        }
     }
 
     /**
-     * Get text from a WebElement
-     *
-     * @param element WebElement to get text from
-     * @return Text content of the element
+     * Safe sendKeys on WebElement
      */
-    public String getText(WebElement element) {
-        WaitUtils.waitForVisibility(driver, element);
-        String text = element.getText();
-        logger.info("Retrieved text: " + text);
-        return text;
+    public void sendKeys(WebElement element, String text) {
+        try {
+            prepareForInteraction();
+            element = waitForElementVisible(element);
+            scrollIntoViewIfNeeded(element);
+            element.clear();
+            element.sendKeys(text);
+            logger.info("Typed in WebElement");
+        } catch (ElementNotInteractableException e) {
+            logger.warn("Element not interactable on first attempt, handling overlays and retrying");
+            prepareForInteraction();
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException ignored) {
+            }
+            element = waitForElementVisible(element);
+            scrollIntoViewIfNeeded(element);
+            element.clear();
+            element.sendKeys(text);
+            logger.info("Successfully typed in WebElement after handling overlays");
+        }
     }
 
     /**
-     * Get text from an element using By locator
-     *
-     * @param locator By locator of the element
-     * @return Text content of the element
+     * Get text from element
      */
     public String getText(By locator) {
         WaitUtils.waitForVisibility(driver, locator);
-        String text = driver.findElement(locator).getText();
-        logger.info("Retrieved text from element: " + locator);
-        return text;
+        return driver.findElement(locator).getText();
     }
 
     /**
-     * Clear the text from a WebElement
-     *
-     * @param element WebElement to clear
+     * Check if element is displayed
      */
-    public void clear(WebElement element) {
-        WaitUtils.waitForVisibility(driver, element);
-        element.clear();
-        logger.info("Cleared element");
-    }
-
-    /**
-     * Clear the text from an element using By locator
-     *
-     * @param locator By locator of the element
-     */
-    public void clear(By locator) {
-        WaitUtils.waitForVisibility(driver, locator);
-        driver.findElement(locator).clear();
-        logger.info("Cleared element: " + locator);
-    }
-
-    /**
-     * Check if a WebElement is displayed
-     *
-     * @param element WebElement to check
-     * @return true if element is displayed, false otherwise
-     */
-    public boolean isDisplayed(WebElement element) {
+    public boolean isDisplayed(By locator) {
         try {
-            WaitUtils.waitForVisibility(driver, element);
-            boolean displayed = element.isDisplayed();
-            logger.info("Element displayed: " + displayed);
-            return displayed;
+            return driver.findElement(locator).isDisplayed();
         } catch (Exception e) {
-            logger.warn("Element not displayed");
             return false;
         }
     }
 
     /**
-     * Check if an element is displayed using By locator
-     *
-     * @param locator By locator of the element
-     * @return true if element is displayed, false otherwise
+     * Scroll element into view if needed
+     * Helps with ElementNotInteractableException
      */
-    public boolean isDisplayed(By locator) {
+    private void scrollIntoViewIfNeeded(WebElement element) {
         try {
-            WaitUtils.waitForVisibility(driver, locator);
-            boolean displayed = driver.findElement(locator).isDisplayed();
-            logger.info("Element displayed: " + displayed);
-            return displayed;
+            JavascriptExecutor js = (JavascriptExecutor) driver;
+            js.executeScript("arguments[0].scrollIntoView(true);", element);
+            logger.debug("Scrolled element into view");
         } catch (Exception e) {
-            logger.warn("Element not displayed: " + locator);
-            return false;
+            logger.debug("Could not scroll element into view: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Wait for WebElement to be visible
+     */
+    private WebElement waitForElementVisible(WebElement element) {
+        try {
+            new org.openqa.selenium.support.ui.WebDriverWait(driver, java.time.Duration.ofSeconds(10))
+                    .until(org.openqa.selenium.support.ui.ExpectedConditions.visibilityOf(element));
+            return element;
+        } catch (Exception e) {
+            logger.warn("Element visibility timeout: " + e.getMessage());
+            return element;
+        }
+    }
+
+    /**
+     * Wait for WebElement to be clickable
+     */
+    private WebElement waitForElementClickable(WebElement element) {
+        try {
+            new org.openqa.selenium.support.ui.WebDriverWait(driver, java.time.Duration.ofSeconds(10))
+                    .until(org.openqa.selenium.support.ui.ExpectedConditions.elementToBeClickable(element));
+            return element;
+        } catch (Exception e) {
+            logger.warn("Element clickability timeout: " + e.getMessage());
+            return element;
         }
     }
 }

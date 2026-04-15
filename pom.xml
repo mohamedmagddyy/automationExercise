@@ -17,8 +17,6 @@
         <testng.version>7.11.0</testng.version>
         <webdrivermanager.version>5.6.3</webdrivermanager.version>
         <log4j.version>2.21.0</log4j.version>
-
-        <allure.version>2.24.0</allure.version>
     </properties>
 
     <dependencies>
@@ -58,13 +56,6 @@
             <version>${log4j.version}</version>
         </dependency>
 
-        <!-- Allure -->
-        <dependency>
-            <groupId>io.qameta.allure</groupId>
-            <artifactId>allure-testng</artifactId>
-            <version>${allure.version}</version>
-        </dependency>
-
     </dependencies>
 
     <build>
@@ -92,14 +83,6 @@
                     <suiteXmlFiles>
                         <suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
                     </suiteXmlFiles>
-
-                    <!-- Allure TestNG listener -->
-                    <properties>
-                        <property>
-                            <name>listener</name>
-                            <value>io.qameta.allure.testng.AllureTestNg</value>
-                        </property>
-                    </properties>
 
                 </configuration>
             </plugin>

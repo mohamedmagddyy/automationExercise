@@ -1,8 +1,8 @@
 package org.example.base;
 
 import org.example.driver.DriverFactory;
-import org.example.utils.AllureUtils;
 import org.example.utils.ConfigReader;
+import org.example.utils.WaitUtils;
 import org.openqa.selenium.WebDriver;
 import org.testng.ITestResult;
 import org.testng.annotations.AfterMethod;
@@ -18,21 +18,18 @@ public class BaseTest {
     protected static final Logger logger = LogManager.getLogger(BaseTest.class);
 
     @Parameters("browser")
-    @BeforeMethod
+    @BeforeMethod(alwaysRun = true)
     public void setup(@Optional("chrome") String browser) {
 
-        logger.info("Browser: " + browser);
-
         DriverFactory.initializeDriver(browser);
-
         driver = DriverFactory.getDriver();
 
-        if (driver == null) {
-            throw new RuntimeException("Driver is NULL after initialization!");
-        }
-
         driver.manage().window().maximize();
+
         driver.get(ConfigReader.getBaseUrl());
+
+        // ✅ handle overlay once per test
+        WaitUtils.waitForOverlayToDisappear(driver);
 
         logger.info("Setup completed");
     }
@@ -46,12 +43,6 @@ public class BaseTest {
 
             logger.error("Test failed: " + result.getThrowable());
 
-            AllureUtils.attachScreenshot(driver, "Failure Screenshot");
-            AllureUtils.attachPageSource(driver, "Page Source");
-            AllureUtils.attachText(
-                    String.valueOf(result.getThrowable()),
-                    "Failure Details"
-            );
 
         } else {
             logger.info("Test passed");

@@ -18,7 +18,7 @@ import java.time.format.DateTimeFormatter;
 public class ScreenshotUtils {
 
     private static final Logger logger = LogManager.getLogger(ScreenshotUtils.class);
-    private static final String SCREENSHOT_DIR = "screenshots";
+    private static final String SCREENSHOT_DIR = "src/test/test-output/screenshotPic";
 
     /**
      * Take screenshot and save to file

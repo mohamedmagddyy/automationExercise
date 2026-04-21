@@ -74,11 +74,11 @@ public class WaitUtils {
 
         for (By overlay : overlays) {
             try {
-                new WebDriverWait(driver, Duration.ofSeconds(3))
+                new WebDriverWait(driver, Duration.ofSeconds(1))
                         .until(ExpectedConditions.invisibilityOfElementLocated(overlay));
                 logger.debug("Overlay disappeared: " + overlay);
             } catch (Exception ignored) {
-                // overlay مش موجود أصلاً، كمّل
+                // overlay not found or already gone, continue
             }
         }
     }

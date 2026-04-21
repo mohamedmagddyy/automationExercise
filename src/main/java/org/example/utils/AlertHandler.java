@@ -41,6 +41,10 @@ public class AlertHandler {
         return new WebDriverWait(driver, Duration.ofSeconds(5));
     }
 
+    private static WebDriverWait getShortWait(WebDriver driver) {
+        return new WebDriverWait(driver, Duration.ofSeconds(1));
+    }
+
     private static Alert waitForAlert(WebDriver driver) {
         return getWait(driver).until(ExpectedConditions.alertIsPresent());
     }
@@ -104,20 +108,24 @@ public class AlertHandler {
      */
     public static void closeConsentPopupIfPresent(WebDriver driver) {
         try {
-            for (By button : CONSENT_BUTTONS) {
+            for (int i = 0; i < CONSENT_BUTTONS.length; i++) {
+                By button = CONSENT_BUTTONS[i];
                 try {
-                    WebElement element = driver.findElement(button);
+                    WebElement element;
+                    if (i == 0) {
+                        // Prioritize first locator with WebDriverWait (short timeout)
+                        element = getShortWait(driver).until(ExpectedConditions.elementToBeClickable(button));
+                    } else {
+                        element = driver.findElement(button);
+                    }
                     if (element.isDisplayed()) {
                         logger.debug("Found consent button, closing: " + button);
                         element.click();
                         logger.info("Closed consent popup");
-                        try {
-                            Thread.sleep(500);
-                        } catch (InterruptedException ignored) {
-                        }
+                        WaitUtils.waitForOverlayToDisappear(driver);
                         return;
                     }
-                } catch (NoSuchElementException | StaleElementReferenceException ignored) {
+                } catch (NoSuchElementException | StaleElementReferenceException | TimeoutException ignored) {
                     logger.debug("Consent button not found: " + button);
                 }
             }
@@ -140,10 +148,6 @@ public class AlertHandler {
                         try {
                             element.sendKeys(Keys.ESCAPE);
                             logger.info("Closed overlay using Escape key");
-                            try {
-                                Thread.sleep(300);
-                            } catch (InterruptedException ignored) {
-                            }
                             return;
                         } catch (Exception e) {
                             logger.debug("Escape key didn't work, ignoring: " + e.getMessage());
@@ -159,6 +163,21 @@ public class AlertHandler {
     }
 
     /**
+     * Hide all ad iframes that may block element interactions
+     */
+    public static void hideAdIframes(WebDriver driver) {
+        try {
+            JavascriptExecutor js = (JavascriptExecutor) driver;
+            js.executeScript(
+                "var iframes = document.querySelectorAll('iframe');" +
+                "iframes.forEach(function(f){ f.style.display='none'; });"
+            );
+        } catch (Exception e) {
+            // safe - ignore
+        }
+    }
+
+    /**
      * Handle all UI blockers (alerts + overlays)
      * Safe operation - always completes without throwing exceptions
      */
@@ -168,6 +187,7 @@ public class AlertHandler {
             acceptAlertIfPresent(driver);
             closeConsentPopupIfPresent(driver);
             closeBlockingOverlayIfPresent(driver);
+            hideAdIframes(driver);
             logger.debug("UI blocker check complete");
         } catch (Exception e) {
             logger.warn("Unexpected error during blocker handling: " + e.getMessage());

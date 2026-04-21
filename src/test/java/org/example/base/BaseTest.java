@@ -1,6 +1,7 @@
 package org.example.base;
 
 import org.example.driver.DriverFactory;
+import org.example.utils.AlertHandler;
 import org.example.utils.ConfigReader;
 import org.example.utils.WaitUtils;
 import org.openqa.selenium.WebDriver;
@@ -28,10 +29,10 @@ public class BaseTest {
 
         driver.get(ConfigReader.getBaseUrl());
 
-        // ✅ handle overlay once per test
+        AlertHandler.closeConsentPopupIfPresent(driver);
         WaitUtils.waitForOverlayToDisappear(driver);
 
-        logger.info("Setup completed");
+        logger.info("Setup completed - browser: " + browser);
     }
 
     @AfterMethod

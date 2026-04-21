@@ -19,21 +19,39 @@ public class BasePage {
     protected static final Logger logger = LogManager.getLogger(BasePage.class);
 
     public BasePage() {
-        this.driver = DriverFactory.getDriver();
+        // Driver is initialized lazily on first use, not here
+    }
+
+    /**
+     * Ensure driver is initialized before any interaction.
+     * This is called at the start of every public method to safely lazy-load the driver.
+     */
+    protected void ensureDriver() {
+        if (driver == null) {
+            driver = DriverFactory.getDriver();
+            if (driver == null) {
+                throw new RuntimeException(
+                    "WebDriver is not initialized. Ensure BaseTest.setup() is called before page object methods."
+                );
+            }
+        }
     }
 
     // =====================
-    // PREPARATION
+    // OVERLAY HANDLING (One-time per page)
     // =====================
 
     /**
-     * Handle any blocking UI elements before interaction
+     * Handle blocking UI elements (overlays, consent popups, alerts).
+     * Call this manually after navigation if needed, or rely on BaseTest.setup() for initial page load.
+     * This is NOT called before every interaction - only once per page for performance.
      */
-    protected void prepareForInteraction() {
+    public void handleOverlaysOnce() {
         try {
+            ensureDriver();
             AlertHandler.handleAllBlockersIfPresent(driver);
         } catch (Exception e) {
-            logger.debug("Error during interaction preparation: " + e.getMessage());
+            logger.debug("Error during overlay handling: " + e.getMessage());
         }
     }
 
@@ -42,11 +60,11 @@ public class BasePage {
     // =====================
 
     /**
-     * Safe click by locator - handles overlays and retries
+     * Safe click by locator - handles retries if interactable exception occurs
      */
     public void click(By locator) {
+        ensureDriver();
         try {
-            prepareForInteraction();
             WaitUtils.waitForClickability(driver, locator);
             WebElement element = driver.findElement(locator);
             ActionsHelper.scrollToElement(driver, element);
@@ -54,24 +72,22 @@ public class BasePage {
             logger.info("Clicked: " + locator);
         } catch (ElementNotInteractableException e) {
             logger.warn("Element not interactable, retrying with JS click: " + locator);
-            prepareForInteraction();
             ActionsHelper.jsClick(driver, locator);
         }
     }
 
     /**
-     * Safe click by WebElement - handles overlays and retries
+     * Safe click by WebElement - handles retries if interactable exception occurs
      */
     public void click(WebElement element) {
+        ensureDriver();
         try {
-            prepareForInteraction();
             WaitUtils.waitForClickability(driver, element);
             ActionsHelper.scrollToElement(driver, element);
             element.click();
             logger.info("Clicked WebElement");
         } catch (ElementNotInteractableException e) {
             logger.warn("Element not interactable, retrying with JS click");
-            prepareForInteraction();
             ActionsHelper.jsClick(driver, element);
         }
     }
@@ -81,11 +97,11 @@ public class BasePage {
     // =====================
 
     /**
-     * Safe sendKeys by locator - handles overlays and retries
+     * Safe sendKeys by locator - handles retries if interactable exception occurs
      */
     public void sendKeys(By locator, String text) {
+        ensureDriver();
         try {
-            prepareForInteraction();
             WaitUtils.waitForVisibility(driver, locator);
             WebElement element = driver.findElement(locator);
             ActionsHelper.scrollToElement(driver, element);
@@ -93,8 +109,7 @@ public class BasePage {
             element.sendKeys(text);
             logger.info("Typed '" + text + "' in: " + locator);
         } catch (ElementNotInteractableException e) {
-            logger.warn("Element not interactable on sendKeys, handling overlays and retrying");
-            prepareForInteraction();
+            logger.warn("Element not interactable on sendKeys, handling and retrying");
             WaitUtils.waitForVisibility(driver, locator);
             WebElement element = driver.findElement(locator);
             ActionsHelper.scrollToElement(driver, element);
@@ -105,19 +120,18 @@ public class BasePage {
     }
 
     /**
-     * Safe sendKeys by WebElement - handles overlays and retries
+     * Safe sendKeys by WebElement - handles retries if interactable exception occurs
      */
     public void sendKeys(WebElement element, String text) {
+        ensureDriver();
         try {
-            prepareForInteraction();
             WaitUtils.waitForVisibility(driver, element);
             ActionsHelper.scrollToElement(driver, element);
             element.clear();
             element.sendKeys(text);
             logger.info("Typed in WebElement");
         } catch (ElementNotInteractableException e) {
-            logger.warn("Element not interactable on sendKeys, handling overlays and retrying");
-            prepareForInteraction();
+            logger.warn("Element not interactable on sendKeys, handling and retrying");
             WaitUtils.waitForVisibility(driver, element);
             ActionsHelper.scrollToElement(driver, element);
             element.clear();
@@ -134,6 +148,7 @@ public class BasePage {
      * Get text from element by locator
      */
     public String getText(By locator) {
+        ensureDriver();
         WaitUtils.waitForVisibility(driver, locator);
         String text = driver.findElement(locator).getText();
         logger.info("Got text: " + text);
@@ -144,6 +159,7 @@ public class BasePage {
      * Get text from WebElement
      */
     public String getText(WebElement element) {
+        ensureDriver();
         WaitUtils.waitForVisibility(driver, element);
         String text = element.getText();
         logger.info("Got text: " + text);
@@ -158,6 +174,7 @@ public class BasePage {
      * Check if element is displayed by locator
      */
     public boolean isDisplayed(By locator) {
+        ensureDriver();
         try {
             return driver.findElement(locator).isDisplayed();
         } catch (Exception e) {
@@ -169,6 +186,7 @@ public class BasePage {
      * Check if WebElement is displayed
      */
     public boolean isDisplayed(WebElement element) {
+        ensureDriver();
         try {
             return element.isDisplayed();
         } catch (Exception e) {
@@ -184,6 +202,7 @@ public class BasePage {
      * Clear element by locator
      */
     public void clear(By locator) {
+        ensureDriver();
         WaitUtils.waitForVisibility(driver, locator);
         driver.findElement(locator).clear();
         logger.info("Cleared element: " + locator);
@@ -197,6 +216,7 @@ public class BasePage {
      * Wait for element to be visible - delegates to WaitUtils
      */
     protected WebElement waitForVisibility(By locator) {
+        ensureDriver();
         return WaitUtils.waitForVisibility(driver, locator);
     }
 
@@ -204,6 +224,7 @@ public class BasePage {
      * Wait for element to be clickable - delegates to WaitUtils
      */
     protected WebElement waitForClickability(By locator) {
+        ensureDriver();
         return WaitUtils.waitForClickability(driver, locator);
     }
 
@@ -211,6 +232,7 @@ public class BasePage {
      * Wait for overlay to disappear - delegates to WaitUtils
      */
     protected void waitForOverlay() {
+        ensureDriver();
         WaitUtils.waitForOverlayToDisappear(driver);
     }
 
@@ -222,6 +244,7 @@ public class BasePage {
      * Scroll to bottom - delegates to ActionsHelper
      */
     protected void scrollToBottom() {
+        ensureDriver();
         ActionsHelper.scrollToBottom(driver);
     }
 
@@ -229,6 +252,7 @@ public class BasePage {
      * Scroll to top - delegates to ActionsHelper
      */
     protected void scrollToTop() {
+        ensureDriver();
         ActionsHelper.scrollToTop(driver);
     }
 
@@ -236,6 +260,7 @@ public class BasePage {
      * Scroll to specific element - delegates to ActionsHelper
      */
     protected void scrollToElement(WebElement element) {
+        ensureDriver();
         ActionsHelper.scrollToElement(driver, element);
     }
 
@@ -247,6 +272,15 @@ public class BasePage {
      * Hover over element - delegates to ActionsHelper
      */
     protected void hoverOver(WebElement element) {
+        ensureDriver();
         ActionsHelper.hoverOverElement(driver, element);
+    }
+
+    /**
+     * Hide ad iframes - delegates to AlertHandler
+     */
+    protected void hideAdIframes() {
+        ensureDriver();
+        AlertHandler.hideAdIframes(driver);
     }
 }

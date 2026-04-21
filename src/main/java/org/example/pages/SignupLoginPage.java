@@ -1,6 +1,7 @@
 package org.example.pages;
 
 import org.example.base.BasePage;
+import org.example.utils.AlertHandler;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -67,7 +68,7 @@ public class SignupLoginPage extends BasePage {
     private static final By contactSubject = By.cssSelector("input[placeholder='Subject']");
     private static final By contactMessage = By.cssSelector("textarea[placeholder='Your Message Here']");
     private static final By uploadFile = By.cssSelector("input[name='upload_file']");
-    private static final By submitBtn = By.cssSelector("input[value='Submit']");
+    private static final By submitBtncontactus = By.cssSelector("input[value='Submit']");
     private static final By contactSuccessMessage = By.cssSelector("div.status.alert.alert-success");
     private static final By homeBtn = By.cssSelector("a.btn.btn-success");
 
@@ -78,8 +79,6 @@ public class SignupLoginPage extends BasePage {
     // Error messages
     private static final By loginErrorMessage = By.cssSelector("p[style='color: red;']");
     private static final By signupErrorMessage = By.cssSelector("p[style='color: red;']");
-
-    private static final By consentButton = By.cssSelector("button.fc-button.fc-cta-consent.fc-primary-button");
 
     public SignupLoginPage() {
         super();
@@ -316,7 +315,8 @@ public class SignupLoginPage extends BasePage {
      * Click submit contact form
      */
     public void clickSubmitContactForm() {
-        click(submitBtn);
+        click(submitBtncontactus);
+        AlertHandler.acceptAlertIfPresent(driver); // ← هنا
         logger.info("Clicked submit contact form");
     }
 
@@ -387,16 +387,5 @@ public class SignupLoginPage extends BasePage {
         Select select = new Select(driver.findElement(locator));
         select.selectByVisibleText(text);
         logger.info("Selected text: " + text + " from dropdown: " + locator);
-    }
-
-    public void acceptConsentIfPresent() {
-        try {
-            WebElement btn = driver.findElement(consentButton);
-            if (btn.isDisplayed()) {
-                btn.click();
-            }
-        } catch (Exception e) {
-            // مفيش popup - كمل عادي
-        }
     }
 }

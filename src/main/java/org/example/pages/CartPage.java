@@ -1,233 +1,237 @@
 package org.example.pages;
 
 import org.example.base.BasePage;
-import org.openqa.selenium.WebDriver;
+import org.example.utils.WaitUtils;
+import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.WebElement;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.util.List;
 
 /**
- * CartPage - Page Object for Cart page
+ * CartPage - Page Object for Cart, Checkout, and Payment pages
  */
 public class CartPage extends BasePage {
 
+    private static final Logger logger = LogManager.getLogger(CartPage.class);
 
+    // ── Cart Table ────────────────────────────────────────────────
+    private static final By CART_ROWS          = By.cssSelector("tbody tr[id^='product-']");
+    private static final By PRODUCT_NAME       = By.cssSelector("td.cart_description h4 a");
+    private static final By PRODUCT_PRICE      = By.cssSelector("td.cart_price p");
+    private static final By PRODUCT_QTY        = By.cssSelector("td.cart_quantity button");
+    private static final By PRODUCT_TOTAL      = By.cssSelector("td.cart_total p.cart_total_price");
+    private static final By DELETE_BTN         = By.cssSelector("a.cart_quantity_delete");
 
+    // ── Cart Navigation ───────────────────────────────────────────
+    private static final By CART_NAV           = By.cssSelector("a[href='/view_cart']");
 
+    // ── Checkout Modal (لو مش logged in) ─────────────────────────
+    private static final By CHECKOUT_MODAL          = By.cssSelector("div.modal-content");
+    private static final By MODAL_LOGIN_LINK         = By.cssSelector("div.modal-body a[href='/login']");
+    private static final By MODAL_CONTINUE_CART_BTN  = By.cssSelector("button.close-checkout-modal");
 
+    // ── Checkout Page ─────────────────────────────────────────────
+    private static final By PROCEED_CHECKOUT   = By.cssSelector("a.btn.check_out");
+    private static final By DELIVERY_ADDRESS   = By.id("address_delivery");
+    private static final By BILLING_ADDRESS    = By.id("address_invoice");
+    private static final By ORDER_COMMENT      = By.cssSelector("#ordermsg textarea[name='message']");
+    private static final By PLACE_ORDER_BTN    = By.cssSelector("a.btn.check_out");
 
-    public CartPage( ) {
+    // ── Payment Page ──────────────────────────────────────────────
+    private static final By CARD_NAME          = By.cssSelector("input[data-qa='name-on-card']");
+    private static final By CARD_NUMBER        = By.cssSelector("input[data-qa='card-number']");
+    private static final By CARD_CVC           = By.cssSelector("input[data-qa='cvc']");
+    private static final By CARD_EXPIRY_MONTH  = By.cssSelector("input[data-qa='expiry-month']");
+    private static final By CARD_EXPIRY_YEAR   = By.cssSelector("input[data-qa='expiry-year']");
+    private static final By PAY_CONFIRM_BTN    = By.cssSelector("button[data-qa='pay-button']");
+    private static final By ORDER_SUCCESS_MSG  = By.cssSelector("#success_message .alert-success");
+
+    // ── Order Confirmed Page ──────────────────────────────────────
+    // data-qa="order-placed" موجود في الـ HTML
+    private static final By ORDER_PLACED_MSG   = By.cssSelector("[data-qa='order-placed']");
+    private static final By DOWNLOAD_INVOICE   = By.cssSelector("a[href*='download_invoice']");
+    private static final By CONTINUE_BTN       = By.cssSelector("a[data-qa='continue-button']");
+
+    // ── Footer Subscription ───────────────────────────────────────
+    private static final By SUBSCRIBE_EMAIL    = By.id("susbscribe_email");
+    private static final By SUBSCRIBE_BTN      = By.id("subscribe");
+    private static final By SUBSCRIBE_SUCCESS  = By.cssSelector("#success-subscribe .alert-success");
+
+    // ─────────────────────────────────────────────────────────────
+
+    public CartPage() {
         super();
     }
 
-    /**
-     * Navigate to cart
-     */
+    // ── Cart ──────────────────────────────────────────────────────
+
     public void navigateToCart() {
-        // TODO: implement
+        click(CART_NAV);
+        logger.info("Navigated to cart");
     }
 
-    /**
-     * Get cart item count
-     *
-     * @return Number of items in cart
-     */
     public int getCartItemCount() {
-        // TODO: implement
-        return 0;
+        List<WebElement> rows = driver.findElements(CART_ROWS);
+        logger.info("Cart item count: " + rows.size());
+        return rows.size();
     }
 
-    /**
-     * Get product name by row
-     *
-     * @param row Row number
-     * @return Product name
-     */
     public String getProductNameByRow(int row) {
-        // TODO: implement
-        return "";
+        List<WebElement> names = driver.findElements(PRODUCT_NAME);
+        String name = names.get(row - 1).getText();
+        logger.info("Product name row " + row + ": " + name);
+        return name;
     }
 
-    /**
-     * Get product quantity by row
-     *
-     * @param row Row number
-     * @return Product quantity
-     */
     public int getProductQuantityByRow(int row) {
-        // TODO: implement
-        return 0;
+        List<WebElement> qtys = driver.findElements(PRODUCT_QTY);
+        int qty = Integer.parseInt(qtys.get(row - 1).getText().trim());
+        logger.info("Product qty row " + row + ": " + qty);
+        return qty;
     }
 
-    /**
-     * Get product price by row
-     *
-     * @param row Row number
-     * @return Product price
-     */
     public String getProductPriceByRow(int row) {
-        // TODO: implement
-        return "";
+        List<WebElement> prices = driver.findElements(PRODUCT_PRICE);
+        String price = prices.get(row - 1).getText();
+        logger.info("Product price row " + row + ": " + price);
+        return price;
     }
 
-    /**
-     * Remove product by row
-     *
-     * @param row Row number
-     */
     public void removeProductByRow(int row) {
-        // TODO: implement
+        List<WebElement> deleteBtns = driver.findElements(DELETE_BTN);
+        WebElement btn = deleteBtns.get(row - 1);
+        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", btn);
+        logger.info("Removed product at row: " + row);
     }
 
-    /**
-     * Click proceed to checkout
-     */
+    // ── Checkout Modal ────────────────────────────────────────────
+
+    public boolean isCheckoutModalVisible() {
+        return isDisplayed(CHECKOUT_MODAL);
+    }
+
+    public void clickLoginFromModal() {
+        WaitUtils.waitForVisibility(driver, MODAL_LOGIN_LINK);
+        click(MODAL_LOGIN_LINK);
+        logger.info("Clicked login link from checkout modal");
+    }
+
+    public void clickContinueOnCartFromModal() {
+        click(MODAL_CONTINUE_CART_BTN);
+        logger.info("Clicked continue on cart from modal");
+    }
+
+    // ── Checkout ──────────────────────────────────────────────────
+
     public void clickProceedToCheckout() {
-        // TODO: implement
+        click(PROCEED_CHECKOUT);
+        logger.info("Clicked Proceed to Checkout");
     }
 
-    /**
-     * Get delivery address
-     *
-     * @return Delivery address
-     */
     public String getDeliveryAddress() {
-        // TODO: implement
-        return "";
+        String address = getText(DELIVERY_ADDRESS);
+        logger.info("Delivery address: " + address);
+        return address;
     }
 
-    /**
-     * Get billing address
-     *
-     * @return Billing address
-     */
     public String getBillingAddress() {
-        // TODO: implement
-        return "";
+        String address = getText(BILLING_ADDRESS);
+        logger.info("Billing address: " + address);
+        return address;
     }
 
-    /**
-     * Get order comment text
-     *
-     * @return Order comment
-     */
-    public String getOrderCommentText() {
-        // TODO: implement
-        return "";
-    }
-
-    /**
-     * Enter order comment
-     *
-     * @param comment Comment text
-     */
     public void enterOrderComment(String comment) {
-        // TODO: implement
+        sendKeys(ORDER_COMMENT, comment);
+        logger.info("Entered order comment: " + comment);
     }
 
-    /**
-     * Click place order
-     */
     public void clickPlaceOrder() {
-        // TODO: implement
+        click(PLACE_ORDER_BTN);
+        logger.info("Clicked Place Order");
     }
 
-    /**
-     * Enter card name
-     *
-     * @param name Card name
-     */
+    // ── Payment ───────────────────────────────────────────────────
+
     public void enterCardName(String name) {
-        // TODO: implement
+        sendKeys(CARD_NAME, name);
+        logger.info("Entered card name: " + name);
     }
 
-    /**
-     * Enter card number
-     *
-     * @param number Card number
-     */
     public void enterCardNumber(String number) {
-        // TODO: implement
+        sendKeys(CARD_NUMBER, number);
+        logger.info("Entered card number");
     }
 
-    /**
-     * Enter card CVC
-     *
-     * @param cvc Card CVC
-     */
     public void enterCardCVC(String cvc) {
-        // TODO: implement
+        sendKeys(CARD_CVC, cvc);
+        logger.info("Entered CVC");
     }
 
-    /**
-     * Enter card expiry month
-     *
-     * @param month Expiry month
-     */
     public void enterCardExpiryMonth(String month) {
-        // TODO: implement
+        sendKeys(CARD_EXPIRY_MONTH, month);
+        logger.info("Entered expiry month: " + month);
     }
 
-    /**
-     * Enter card expiry year
-     *
-     * @param year Expiry year
-     */
     public void enterCardExpiryYear(String year) {
-        // TODO: implement
+        sendKeys(CARD_EXPIRY_YEAR, year);
+        logger.info("Entered expiry year: " + year);
     }
 
-    /**
-     * Click confirm order
-     */
     public void clickConfirmOrder() {
-        // TODO: implement
+        click(PAY_CONFIRM_BTN);
+        logger.info("Clicked Pay and Confirm Order");
     }
 
-    /**
-     * Get order success message
-     *
-     * @return Success message
-     */
     public String getOrderSuccessMessage() {
-        // TODO: implement
-        return "";
+        String msg = getText(ORDER_SUCCESS_MSG);
+        logger.info("Order success message: " + msg);
+        return msg;
     }
 
-    /**
-     * Click download invoice
-     */
+    // ── Order Confirmed ───────────────────────────────────────────
+
+    public String getOrderPlacedMessage() {
+        WaitUtils.waitForVisibility(driver, ORDER_PLACED_MSG);
+        String msg = getText(ORDER_PLACED_MSG);
+        logger.info("Order placed message: " + msg);
+        return msg;
+    }
+
     public void clickDownloadInvoice() {
-        // TODO: implement
+        WaitUtils.waitForVisibility(driver, DOWNLOAD_INVOICE);
+        click(DOWNLOAD_INVOICE);
+        logger.info("Clicked Download Invoice");
     }
 
-    /**
-     * Click continue after order
-     */
     public void clickContinueAfterOrder() {
-        // TODO: implement
+        click(CONTINUE_BTN);
+        logger.info("Clicked Continue after order");
     }
 
-    /**
-     * Enter subscription email
-     *
-     * @param email Email address
-     */
+    // ── Footer Subscription ───────────────────────────────────────
+
     public void enterSubscriptionEmail(String email) {
-        // TODO: implement
+        sendKeys(SUBSCRIBE_EMAIL, email);
+        logger.info("Entered subscription email: " + email);
     }
 
-    /**
-     * Click subscribe button
-     */
     public void clickSubscribeButton() {
-        // TODO: implement
+        click(SUBSCRIBE_BTN);
+        logger.info("Clicked subscribe button");
     }
 
-    /**
-     * Get subscription success message
-     *
-     * @return Success message
-     */
     public String getSubscriptionSuccessMessage() {
-        // TODO: implement
-        return "";
+        WaitUtils.waitForVisibility(driver, SUBSCRIBE_SUCCESS);
+        String msg = getText(SUBSCRIBE_SUCCESS);
+        logger.info("Subscription success: " + msg);
+        return msg;
+    }
+
+    // ── Kept for compatibility ────────────────────────────────────
+    public String getOrderCommentText() {
+        return getText(ORDER_COMMENT);
     }
 }

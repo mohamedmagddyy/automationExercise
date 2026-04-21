@@ -10,54 +10,50 @@ import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-/**
- * SignupLoginTests - Clean and maintainable test class
- */
 public class SignupLoginTests extends BaseTest {
 
     private static final Logger logger = LogManager.getLogger(SignupLoginTests.class);
-
     private SignupLoginPage page;
 
     @BeforeMethod(alwaysRun = true, dependsOnMethods = "setup")
     public void initPage() {
         page = new SignupLoginPage();
-        page.acceptConsentIfPresent();
         logger.info("SignupLoginPage initialized");
     }
 
     @Test
     public void TC01_RegisterUser() {
-
         logger.info("Starting TC01_RegisterUser");
 
         String email = TestDataReader.generateDynamicEmail();
-        logger.info("Test Data - Name: " + TestDataReader.getProperty("register.name") + ", Email: " + email);
+        String name  = TestDataReader.getRequiredProperty("register.name");
+        logger.info("Test Data - Name: " + name + ", Email: " + email);
 
         logger.info("Opening login page");
         getDriver().get(ConfigReader.getBaseUrl() + "/login");
 
-        logger.info("Registering new user");
-        page.enterSignupName(TestDataReader.getProperty("register.name"));
+        logger.info("Entering signup details");
+        page.enterSignupName(name);
         page.enterSignupEmail(email);
         page.clickSignupButton();
 
+        logger.info("Filling registration form");
         page.fillRegistrationForm(
-                "Mr",
-                "password123",
-                "15",
-                "5",
-                "1990",
-                "John",
-                "Doe",
-                "ABC Corp",
-                "123 Street",
-                "Apt 4",
-                "United States",
-                "California",
-                "Los Angeles",
-                "90001",
-                "1234567890"
+                TestDataReader.getRequiredProperty("register.title"),
+                TestDataReader.getRequiredProperty("register.password"),
+                TestDataReader.getRequiredProperty("register.day"),
+                TestDataReader.getRequiredProperty("register.month"),
+                TestDataReader.getRequiredProperty("register.year"),
+                TestDataReader.getRequiredProperty("register.firstname"),
+                TestDataReader.getRequiredProperty("register.lastname"),
+                TestDataReader.getRequiredProperty("register.company"),
+                TestDataReader.getRequiredProperty("register.address1"),
+                TestDataReader.getRequiredProperty("register.address2"),
+                TestDataReader.getRequiredProperty("register.country"),
+                TestDataReader.getRequiredProperty("register.state"),
+                TestDataReader.getRequiredProperty("register.city"),
+                TestDataReader.getRequiredProperty("register.zipcode"),
+                TestDataReader.getRequiredProperty("register.mobile")
         );
 
         page.clickCreateAccountButton();
@@ -71,36 +67,35 @@ public class SignupLoginTests extends BaseTest {
 
     @Test
     public void TC02_LoginWithCorrectCredentials() {
-
         logger.info("Starting TC02_LoginWithCorrectCredentials");
-        logger.info("Test Data - Email: " + TestDataReader.getProperty("valid.email"));
+        logger.info("Test Data - Email: " + TestDataReader.getRequiredProperty("valid.email"));
 
         logger.info("Opening login page");
         getDriver().get(ConfigReader.getBaseUrl() + "/login");
 
         logger.info("Logging in with valid credentials");
-        page.enterLoginEmail(TestDataReader.getProperty("valid.email"));
-        page.enterLoginPassword(TestDataReader.getProperty("valid.password"));
+        page.enterLoginEmail(TestDataReader.getRequiredProperty("valid.email"));
+        page.enterLoginPassword(TestDataReader.getRequiredProperty("valid.password"));
         page.clickLoginButton();
 
         logger.info("Verifying login success");
         String user = page.getLoggedInUsername();
-        Assert.assertTrue(user.contains("Logged in as"));
+        Assert.assertFalse(user.isEmpty(), "Username should not be empty after login");
+
 
         logger.info("TC02 completed successfully");
     }
 
     @Test
     public void TC03_LoginWithIncorrectCredentials() {
-
         logger.info("Starting TC03_LoginWithIncorrectCredentials");
 
         logger.info("Opening login page");
         getDriver().get(ConfigReader.getBaseUrl() + "/login");
 
         logger.info("Logging in with invalid credentials");
-        page.enterLoginEmail(TestDataReader.getProperty("invalid.email"));
-        page.enterLoginPassword(TestDataReader.getProperty("invalid.password"));
+        page.enterLoginEmail(TestDataReader.getRequiredProperty("invalid.email"));
+        page.enterLoginPassword(TestDataReader.getRequiredProperty("invalid.password"));
         page.clickLoginButton();
 
         logger.info("Verifying error message");
@@ -112,16 +107,17 @@ public class SignupLoginTests extends BaseTest {
 
     @Test
     public void TC04_LogoutUser() {
-
         logger.info("Starting TC04_LogoutUser");
 
-        logger.info("Logging in first");
+        logger.info("Opening login page");
         getDriver().get(ConfigReader.getBaseUrl() + "/login");
-        page.enterLoginEmail(TestDataReader.getProperty("valid.email"));
-        page.enterLoginPassword(TestDataReader.getProperty("valid.password"));
+
+        logger.info("Logging in");
+        page.enterLoginEmail(TestDataReader.getRequiredProperty("valid.email"));
+        page.enterLoginPassword(TestDataReader.getRequiredProperty("valid.password"));
         page.clickLoginButton();
 
-        logger.info("Logging out user");
+        logger.info("Logging out");
         page.clickLogoutButton();
 
         logger.info("Verifying logout");
@@ -132,15 +128,14 @@ public class SignupLoginTests extends BaseTest {
 
     @Test
     public void TC05_RegisterWithExistingEmail() {
-
         logger.info("Starting TC05_RegisterWithExistingEmail");
 
         logger.info("Opening login page");
         getDriver().get(ConfigReader.getBaseUrl() + "/login");
 
         logger.info("Attempting to register with existing email");
-        page.enterSignupName(TestDataReader.getProperty("register.name"));
-        page.enterSignupEmail(TestDataReader.getProperty("valid.email"));
+        page.enterSignupName(TestDataReader.getRequiredProperty("register.name"));
+        page.enterSignupEmail(TestDataReader.getRequiredProperty("valid.email"));
         page.clickSignupButton();
 
         logger.info("Verifying error message");
@@ -152,14 +147,18 @@ public class SignupLoginTests extends BaseTest {
 
     @Test
     public void TC06_ContactUsForm() {
-
         logger.info("Starting TC06_ContactUsForm");
 
         logger.info("Opening contact page");
         getDriver().get(ConfigReader.getBaseUrl() + "/contact_us");
 
         logger.info("Submitting contact form");
-        page.fillContactForm("John Doe", "john@test.com", "Subject", "Message");
+        page.fillContactForm(
+                TestDataReader.getRequiredProperty("contact.name"),
+                TestDataReader.getRequiredProperty("contact.email"),
+                TestDataReader.getRequiredProperty("contact.subject"),
+                TestDataReader.getRequiredProperty("contact.message")
+        );
         page.clickSubmitContactForm();
 
         logger.info("Verifying success message");

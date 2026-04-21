@@ -12,7 +12,7 @@ import org.apache.logging.log4j.Logger;
 
 public class DriverFactory {
 
-    private static final ThreadLocal<WebDriver> driverThreadLocal = new ThreadLocal<>();
+    private static WebDriver driver;
     private static final Logger logger = LogManager.getLogger(DriverFactory.class);
 
     public static void initializeDriver(String browserType) {
@@ -20,8 +20,6 @@ public class DriverFactory {
         if (browserType == null || browserType.isEmpty()) {
             throw new IllegalArgumentException("Browser type cannot be null");
         }
-
-        WebDriver driver;
 
         switch (browserType.toLowerCase()) {
 
@@ -58,22 +56,16 @@ public class DriverFactory {
             default:
                 throw new RuntimeException("Unsupported browser: " + browserType);
         }
-
-        driverThreadLocal.set(driver);
     }
 
-    // ✅ بيرجع null بدل ما يعمل exception
-    // عشان BasePage تتعمل بدون مشاكل قبل ما الـ driver يتعمل
     public static WebDriver getDriver() {
-        return driverThreadLocal.get();
+        return driver;
     }
 
     public static void quitDriver() {
-        WebDriver driver = driverThreadLocal.get();
-
         if (driver != null) {
             driver.quit();
-            driverThreadLocal.remove();
+            driver = null;
             logger.info("Driver closed");
         }
     }

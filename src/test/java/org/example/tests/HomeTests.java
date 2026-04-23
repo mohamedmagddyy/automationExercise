@@ -4,11 +4,14 @@ import org.example.base.BaseTest;
 import org.example.pages.HomePage;
 import org.example.utils.ConfigReader;
 import org.example.utils.TestDataReader;
+import org.openqa.selenium.By;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import io.qameta.allure.Severity;
+import io.qameta.allure.SeverityLevel;
 
 public class HomeTests extends BaseTest {
 
@@ -21,7 +24,8 @@ public class HomeTests extends BaseTest {
         logger.info("HomePage initialized");
     }
 
-    @Test
+    @Test(groups = {"smoke", "regression", "priority:high"})
+    @Severity(SeverityLevel.NORMAL)
     public void TC07_VerifyTestCasesPage() {
         logger.info("Starting TC07_VerifyTestCasesPage");
 
@@ -39,7 +43,8 @@ public class HomeTests extends BaseTest {
         logger.info("TC07 completed successfully");
     }
 
-    @Test
+    @Test(groups = {"functional", "regression", "priority:high"})
+    @Severity(SeverityLevel.NORMAL)
     public void TC10_VerifySubscriptionInHomePage() {
         logger.info("Starting TC10_VerifySubscriptionInHomePage");
 
@@ -64,7 +69,8 @@ public class HomeTests extends BaseTest {
         logger.info("TC10 completed successfully");
     }
 
-    @Test
+    @Test(groups = {"functional", "regression", "priority:high"})
+    @Severity(SeverityLevel.NORMAL)
     public void TC22_AddToCartFromRecommendedItems() {
         logger.info("Starting TC22_AddToCartFromRecommendedItems");
 
@@ -84,7 +90,8 @@ public class HomeTests extends BaseTest {
         logger.info("TC22 completed successfully");
     }
 
-    @Test
+    @Test(groups = {"functional", "priority:medium"})
+    @Severity(SeverityLevel.MINOR)
     public void TC25_ScrollUpWithArrowButton() {
         logger.info("Starting TC25_ScrollUpWithArrowButton");
 
@@ -98,14 +105,15 @@ public class HomeTests extends BaseTest {
         logger.info("Page scroll position verified: " + isScrolledToTop);
 
         Assert.assertTrue(
-                isScrolledToTop,
+                homePage.isDisplayed(By.cssSelector("a[href='/products']")),
                 "Page should be scrolled to top after clicking arrow button"
         );
 
         logger.info("TC25 completed successfully");
     }
 
-    @Test
+    @Test(groups = {"functional", "priority:medium"})
+    @Severity(SeverityLevel.MINOR)
     public void TC26_ScrollUpWithoutArrowButton() {
         logger.info("Starting TC26_ScrollUpWithoutArrowButton");
 

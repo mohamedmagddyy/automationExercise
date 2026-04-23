@@ -52,7 +52,7 @@ public class ProductsPage extends BasePage {
     // رابط السب كاتيجوري
     private static final By SUBCATEGORY_LINKS    = By.cssSelector("#accordian .panel-body a");
     // عنوان صفحة الكاتيجوري
-    private static final By CATEGORY_TITLE       = By.cssSelector("h2.title.text-center");
+    private static final By CATEGORY_TITLE       = By.cssSelector("div.features_items h2.title.text-center");
 
     // ── Brand Sidebar ─────────────────────────────────────────────
     private static final By BRAND_LINKS          = By.cssSelector("div.brands-name a");
@@ -87,9 +87,9 @@ public class ProductsPage extends BasePage {
     }
 
     public int getSearchResultCount() {
-        List<WebElement> cards = driver.findElements(PRODUCT_CARDS);
-        logger.info("Product count: " + cards.size());
-        return cards.size();
+        return driver.findElements(
+                By.cssSelector("div.features_items div.single-products")
+        ).size();
     }
 
     // ── Product Grid ──────────────────────────────────────────────
@@ -99,6 +99,7 @@ public class ProductsPage extends BasePage {
      * بستخدم JavaScript click عشان الإعلانات بتغطي الزرار
      */
     public void addProductToCartByIndex(int index) {
+
         List<WebElement> cards = driver.findElements(PRODUCT_CARDS);
         WebElement card = cards.get(index - 1);
 
@@ -213,29 +214,20 @@ public class ProductsPage extends BasePage {
      * subCategory = "Dress" / "Tops" / etc.
      */
     public void navigateToCategoryByName(String category, String subCategory) {
-        // افتح الـ accordion الخاص بالكاتيجوري
-        List<WebElement> catLinks = driver.findElements(CATEGORY_LINKS);
-        for (WebElement link : catLinks) {
-            if (link.getText().trim().equalsIgnoreCase(category)) {
-                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", link);
-                break;
-            }
-        }
+        // Step 1: click parent to expand accordion
+        By parentLocator = By.xpath(
+                String.format("//a[normalize-space()='%s']", category)
+        );
+        click(parentLocator);
+        logger.info("Expanded category: " + category);
 
-        // انتظر السب كاتيجوري وانقر عليه
-        List<WebElement> subLinks = WaitUtils.waitForVisibility(driver,
-                By.cssSelector("#accordian .panel-collapse.in a")) != null
-                ? driver.findElements(By.cssSelector("#accordian .panel-collapse.in a"))
-                : driver.findElements(SUBCATEGORY_LINKS);
-
-        for (WebElement link : subLinks) {
-            if (link.getText().trim().toLowerCase().contains(subCategory.toLowerCase())) {
-                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", link);
-                logger.info("Navigated to category: " + category + " > " + subCategory);
-                return;
-            }
-        }
-        logger.warn("SubCategory not found: " + subCategory);
+        // Step 2: wait for panel to open then click subcategory
+        By childLocator = By.xpath(
+                String.format("//div[@id='%s']//a[normalize-space()='%s']", category, subCategory)
+        );
+        waitForVisibility(childLocator);
+        click(childLocator);
+        logger.info("Navigated to: " + category + " > " + subCategory);
     }
 
     public String getCategoryPageTitle() {

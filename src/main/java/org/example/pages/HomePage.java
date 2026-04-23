@@ -7,6 +7,7 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.openqa.selenium.WebElement;
 
 /**
  * HomePage - Page Object for Home page
@@ -31,7 +32,7 @@ public class HomePage extends BasePage {
 
     // ==================== Recommended Products ====================
     private static final By recommendedProductsSection = By.cssSelector("div.recommended_items");
-    private static final By firstRecommendedAddToCart = By.xpath("//div[@class='recommended_items']//a[contains(@class,'add-to-cart')][1]");
+    private static final By firstRecommendedAddToCart = By.cssSelector("div.recommended_items div.productinfo a.add-to-cart");
     private static final By continueShoppingBtn = By.cssSelector("button[data-dismiss='modal']");
 
     // ==================== Footer ====================
@@ -84,6 +85,7 @@ public class HomePage extends BasePage {
      * Scroll down to footer
      */
     public void scrollDownToFooter() {
+        ensureDriver();
         logger.info("Scrolling down to footer");
         ActionsHelper.scrollToBottom(driver);
         // Wait for footer to be visible
@@ -106,6 +108,7 @@ public class HomePage extends BasePage {
      * Scroll to top of the page using JavaScript
      */
     public void scrollToTop() {
+        ensureDriver();
         logger.info("Scrolling to top of page");
         JavascriptExecutor js = (JavascriptExecutor) driver;
         js.executeScript("window.scrollTo(0, 0);");
@@ -118,6 +121,7 @@ public class HomePage extends BasePage {
      * @return true if at top, false otherwise
      */
     public boolean isScrolledToTop() {
+        ensureDriver();
         logger.info("Checking if page is scrolled to top");
         JavascriptExecutor js = (JavascriptExecutor) driver;
         Long scrollY = (Long) js.executeScript("return window.pageYOffset;");
@@ -130,22 +134,18 @@ public class HomePage extends BasePage {
      * Add first recommended item to cart
      */
     public void addFirstRecommendedItemToCart() {
+        ensureDriver();
         logger.info("Adding first recommended item to cart");
-
-        // Scroll to recommended products section
         ActionsHelper.scrollToElement(driver, driver.findElement(recommendedProductsSection));
-
-        // Click add to cart for first recommended product
-        click(firstRecommendedAddToCart);
+        WebElement btn = driver.findElement(firstRecommendedAddToCart);
+        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", btn);
         logger.info("Clicked add to cart for first recommended product");
-
-        // Handle the modal by clicking continue shopping
         try {
             WaitUtils.waitForVisibility(driver, continueShoppingBtn);
             click(continueShoppingBtn);
             logger.info("Clicked continue shopping to close modal");
         } catch (Exception e) {
-            logger.warn("Continue shopping button not found or modal didn't appear: " + e.getMessage());
+            logger.warn("Continue shopping button not found: " + e.getMessage());
         }
     }
 

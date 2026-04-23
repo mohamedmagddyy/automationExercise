@@ -10,6 +10,8 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import io.qameta.allure.Severity;
+import io.qameta.allure.SeverityLevel;
 
 public class ProductsTests extends BaseTest {
 
@@ -17,14 +19,16 @@ public class ProductsTests extends BaseTest {
     private ProductsPage productsPage;
     private SignupLoginPage signupLoginPage;
 
-    @BeforeMethod(alwaysRun = true, dependsOnMethods = "setup")
-    public void initPages() {
+    @BeforeMethod(alwaysRun = true)
+    public void initPage() {
+        getDriver().manage().deleteAllCookies();
         productsPage  = new ProductsPage();
         signupLoginPage = new SignupLoginPage();
         logger.info("Pages initialized");
     }
 
-    @Test
+    @Test(groups = {"smoke", "regression", "priority:critical"})
+    @Severity(SeverityLevel.CRITICAL)
     public void TC08_VerifyAllProductsAndProductDetail() {
         logger.info("Starting TC08_VerifyAllProductsAndProductDetail");
 
@@ -47,7 +51,8 @@ public class ProductsTests extends BaseTest {
         logger.info("TC08 completed successfully");
     }
 
-    @Test
+    @Test(groups = {"functional", "regression", "priority:high"})
+    @Severity(SeverityLevel.NORMAL)
     public void TC09_SearchProduct() {
         logger.info("Starting TC09_SearchProduct");
 
@@ -66,7 +71,8 @@ public class ProductsTests extends BaseTest {
         logger.info("TC09 completed successfully");
     }
 
-    @Test
+    @Test(groups = {"functional", "regression", "priority:high"})
+    @Severity(SeverityLevel.NORMAL)
     public void TC18_ViewCategoryProducts() {
         logger.info("Starting TC18_ViewCategoryProducts");
 
@@ -88,7 +94,8 @@ public class ProductsTests extends BaseTest {
         logger.info("TC18 completed successfully");
     }
 
-    @Test
+    @Test(groups = {"functional", "priority:medium"})
+    @Severity(SeverityLevel.MINOR)
     public void TC19_ViewAndCartBrandProducts() {
         logger.info("Starting TC19_ViewAndCartBrandProducts");
 
@@ -107,7 +114,8 @@ public class ProductsTests extends BaseTest {
         logger.info("TC19 completed successfully");
     }
 
-    @Test
+    @Test(groups = {"functional", "regression", "priority:high"})
+    @Severity(SeverityLevel.NORMAL)
     public void TC20_SearchProductsAndVerifyCartAfterLogin() {
         logger.info("Starting TC20_SearchProductsAndVerifyCartAfterLogin");
 
@@ -137,7 +145,8 @@ public class ProductsTests extends BaseTest {
         logger.info("TC20 completed successfully");
     }
 
-    @Test
+    @Test(groups = {"functional", "priority:medium"})
+    @Severity(SeverityLevel.MINOR)
     public void TC21_AddReviewOnProduct() {
         logger.info("Starting TC21_AddReviewOnProduct");
 

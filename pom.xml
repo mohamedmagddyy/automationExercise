@@ -56,6 +56,13 @@
             <version>${log4j.version}</version>
         </dependency>
 
+        <!-- Allure for Reporting -->
+        <dependency>
+            <groupId>io.qameta.allure</groupId>
+            <artifactId>allure-testng</artifactId>
+            <version>2.24.0</version>
+        </dependency>
+
     </dependencies>
 
     <build>

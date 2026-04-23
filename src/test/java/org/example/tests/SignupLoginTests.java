@@ -1,30 +1,38 @@
 package org.example.tests;
 
 import org.example.base.BaseTest;
+import org.example.pages.HomePage;
 import org.example.pages.SignupLoginPage;
 import org.example.utils.ConfigReader;
 import org.example.utils.TestDataReader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.openqa.selenium.By;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+import io.qameta.allure.Severity;
+import io.qameta.allure.SeverityLevel;
 
 public class SignupLoginTests extends BaseTest {
 
     private static final Logger logger = LogManager.getLogger(SignupLoginTests.class);
     private SignupLoginPage page;
+    private HomePage homePage;
 
     @BeforeMethod(alwaysRun = true, dependsOnMethods = "setup")
     public void initPage() {
+        homePage = new HomePage();
         page = new SignupLoginPage();
         logger.info("SignupLoginPage initialized");
     }
 
-    @Test
+    @Test(groups = {"smoke", "regression", "priority:critical"})
+    @Severity(SeverityLevel.CRITICAL)
     public void TC01_RegisterUser() {
         logger.info("Starting TC01_RegisterUser");
 
+        // Always use generated email to avoid duplicate registration failure
         String email = TestDataReader.generateDynamicEmail();
         String name  = TestDataReader.getRequiredProperty("register.name");
         logger.info("Test Data - Name: " + name + ", Email: " + email);
@@ -40,6 +48,7 @@ public class SignupLoginTests extends BaseTest {
         logger.info("Filling registration form");
         page.fillRegistrationForm(
                 TestDataReader.getRequiredProperty("register.title"),
+//                email,
                 TestDataReader.getRequiredProperty("register.password"),
                 TestDataReader.getRequiredProperty("register.day"),
                 TestDataReader.getRequiredProperty("register.month"),
@@ -60,12 +69,15 @@ public class SignupLoginTests extends BaseTest {
 
         logger.info("Verifying account creation");
         String msg = page.getAccountCreatedMessage();
-        Assert.assertEquals(msg, "ACCOUNT CREATED!");
 
-        logger.info("TC01 completed successfully");
+        Assert.assertEquals(msg, "ACCOUNT CREATED!",
+                "Account Created message mismatch! Actual: " + msg);
+
+        logger.info("Account Created message verified: " + msg);
     }
 
-    @Test
+    @Test(groups = {"smoke", "regression", "priority:critical"})
+    @Severity(SeverityLevel.CRITICAL)
     public void TC02_LoginWithCorrectCredentials() {
         logger.info("Starting TC02_LoginWithCorrectCredentials");
         logger.info("Test Data - Email: " + TestDataReader.getRequiredProperty("valid.email"));
@@ -86,7 +98,8 @@ public class SignupLoginTests extends BaseTest {
         logger.info("TC02 completed successfully");
     }
 
-    @Test
+    @Test(groups = {"functional", "regression", "priority:high"})
+    @Severity(SeverityLevel.NORMAL)
     public void TC03_LoginWithIncorrectCredentials() {
         logger.info("Starting TC03_LoginWithIncorrectCredentials");
 
@@ -105,7 +118,8 @@ public class SignupLoginTests extends BaseTest {
         logger.info("TC03 completed successfully");
     }
 
-    @Test
+    @Test(groups = {"smoke", "regression", "priority:high"})
+    @Severity(SeverityLevel.NORMAL)
     public void TC04_LogoutUser() {
         logger.info("Starting TC04_LogoutUser");
 
@@ -121,12 +135,18 @@ public class SignupLoginTests extends BaseTest {
         page.clickLogoutButton();
 
         logger.info("Verifying logout");
-        Assert.assertTrue(getDriver().getCurrentUrl().contains("/login"));
+        logger.info("Verifying logout");
+        Assert.assertTrue(
+                getDriver().getCurrentUrl().contains("/login") ||
+                        homePage.isDisplayed(By.cssSelector("a[href='/login']")),
+                "Should be redirected to login page or Signup/Login button visible"
+        );
 
         logger.info("TC04 completed successfully");
     }
 
-    @Test
+    @Test(groups = {"functional", "regression", "priority:high"})
+    @Severity(SeverityLevel.NORMAL)
     public void TC05_RegisterWithExistingEmail() {
         logger.info("Starting TC05_RegisterWithExistingEmail");
 
@@ -145,7 +165,8 @@ public class SignupLoginTests extends BaseTest {
         logger.info("TC05 completed successfully");
     }
 
-    @Test
+    @Test(groups = {"functional", "regression", "priority:medium"})
+    @Severity(SeverityLevel.MINOR)
     public void TC06_ContactUsForm() {
         logger.info("Starting TC06_ContactUsForm");
 

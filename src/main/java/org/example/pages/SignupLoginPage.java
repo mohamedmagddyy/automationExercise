@@ -161,6 +161,7 @@ public class SignupLoginPage extends BasePage {
      * Fill registration form
      *
      * @param title Title (Mr/Mrs)
+     * @param email Email address (dynamic, to avoid duplicate registration)
      * @param password Password
      * @param day Day of birth
      * @param month Month of birth
@@ -176,16 +177,14 @@ public class SignupLoginPage extends BasePage {
      * @param zipcode Zipcode
      * @param mobile Mobile number
      */
-    public void fillRegistrationForm(String title, String password, String day, String month, String year,
-                                   String firstName, String lastName, String company, String address1,
-                                   String address2, String country, String state, String city,
-                                   String zipcode, String mobile) {
+    public void fillRegistrationForm(String title, String password, String day, String month, String year, String firstName, String lastName, String company, String address1, String address2, String country, String state, String city, String zipcode, String mobile) {
         // Select title
         if ("Mr".equalsIgnoreCase(title)) {
             click(titleMr);
         } else if ("Mrs".equalsIgnoreCase(title)) {
             click(titleMrs);
         }
+
 
         // Enter password
         sendKeys(passwordReg, password);

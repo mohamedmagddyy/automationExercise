@@ -8,157 +8,184 @@ import org.openqa.selenium.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+/**
+ * BasePage — Facade layer over ActionsHelper.
+ *
+ * Rules:
+ *  - NEVER talks to WaitUtils or AlertHandler directly (except handleOverlaysOnce)
+ *  - NEVER contains business logic
+ *  - NEVER duplicates ActionsHelper logic
+ *  - ensureDriver() is called ONCE per method group, not per line
+ *
+ * Overlay strategy:
+ *  - Overlays are handled ONCE at page load in BaseTest.setup()
+ *  - If a test navigates to a new page, call handleOverlaysOnce() manually
+ *  - click() and sendKeys() do NOT check for overlays — they are fast by design
+ */
 public class BasePage {
 
     protected WebDriver driver;
     protected static final Logger logger = LogManager.getLogger(BasePage.class);
 
     public BasePage() {
-        // Driver is initialized lazily on first use
-    }
-
-    // =====================
-    // DRIVER INIT
-    // =====================
-
-    protected void ensureDriver() {
-        if (driver == null) {
-            driver = DriverFactory.getDriver();
-            if (driver == null) {
-                throw new RuntimeException(
-                        "WebDriver is not initialized. Ensure BaseTest.setup() is called before page object methods."
-                );
-            }
+        this.driver = DriverFactory.getDriver();
+        if (this.driver == null) {
+            throw new RuntimeException(
+                    "WebDriver is not initialized. Ensure BaseTest.setup() runs before any Page Object is created."
+            );
         }
     }
 
-    // =====================
-    // OVERLAY HANDLING
-    // =====================
+    // =========================================================================
+    // OVERLAY — call manually after page navigation inside a test
+    // =========================================================================
 
+    /**
+     * Call this after navigating to a NEW page inside a test method.
+     * Do NOT call before every click — that kills performance.
+     */
     public void handleOverlaysOnce() {
-        ensureDriver();
         AlertHandler.handleAllBlockersIfPresent(driver);
+        logger.debug("handleOverlaysOnce() completed");
     }
 
-    // =====================
+    // =========================================================================
     // CLICK
-    // =====================
+    // =========================================================================
 
     public void click(By locator) {
-        ensureDriver();
         ActionsHelper.click(driver, locator);
     }
 
     public void click(WebElement element) {
-        ensureDriver();
         ActionsHelper.click(driver, element);
     }
 
-    // =====================
+    // =========================================================================
     // SEND KEYS
-    // =====================
+    // =========================================================================
 
     public void sendKeys(By locator, String text) {
-        ensureDriver();
         ActionsHelper.sendKeys(driver, locator, text);
     }
 
     public void sendKeys(WebElement element, String text) {
-        ensureDriver();
         ActionsHelper.sendKeys(driver, element, text);
     }
 
-    // =====================
+    // =========================================================================
     // GET TEXT
-    // =====================
+    // =========================================================================
 
     public String getText(By locator) {
-        ensureDriver();
         return ActionsHelper.getText(driver, locator);
     }
 
     public String getText(WebElement element) {
-        ensureDriver();
         return ActionsHelper.getText(driver, element);
     }
 
-    // =====================
+    // =========================================================================
     // DISPLAY CHECK
-    // =====================
+    // =========================================================================
 
     public boolean isDisplayed(By locator) {
-        ensureDriver();
         return ActionsHelper.isDisplayed(driver, locator);
     }
 
     public boolean isDisplayed(WebElement element) {
-        ensureDriver();
         return ActionsHelper.isDisplayed(driver, element);
     }
 
-    // =====================
+    // =========================================================================
     // CLEAR
-    // =====================
+    // =========================================================================
 
     public void clear(By locator) {
-        ensureDriver();
         ActionsHelper.clear(driver, locator);
     }
 
-    // =====================
-    // WAIT HELPERS
-    // =====================
+    // =========================================================================
+    // SELECT DROPDOWNS — replaces direct new Select() calls in page objects
+    // =========================================================================
+
+    public void selectByValue(By locator, String value) {
+        ActionsHelper.selectByValue(driver, locator, value);
+    }
+
+    public void selectByVisibleText(By locator, String text) {
+        ActionsHelper.selectByVisibleText(driver, locator, text);
+    }
+
+    public void selectByIndex(By locator, int index) {
+        ActionsHelper.selectByIndex(driver, locator, index);
+    }
+
+    // =========================================================================
+    // WAIT HELPERS — thin wrappers, use sparingly in page objects
+    // =========================================================================
 
     protected WebElement waitForVisibility(By locator) {
-        ensureDriver();
         return WaitUtils.waitForVisibility(driver, locator);
     }
 
     protected WebElement waitForClickability(By locator) {
-        ensureDriver();
         return WaitUtils.waitForClickability(driver, locator);
     }
 
-    protected void waitForOverlay() {
-        ensureDriver();
-        WaitUtils.waitForOverlayToDisappear(driver);
+    protected boolean waitForInvisibility(By locator) {
+        return WaitUtils.waitForInvisibility(driver, locator);
     }
 
-    // =====================
+    // =========================================================================
     // SCROLL HELPERS
-    // =====================
+    // =========================================================================
 
     protected void scrollToBottom() {
-        ensureDriver();
         ActionsHelper.scrollToBottom(driver);
     }
 
     protected void scrollToTop() {
-        ensureDriver();
         ActionsHelper.scrollToTop(driver);
     }
 
     protected void scrollToElement(WebElement element) {
-        ensureDriver();
         ActionsHelper.scrollToElement(driver, element);
     }
 
-    // =====================
-    // HOVER HELPER
-    // =====================
+    protected void scrollToElement(By locator) {
+        ActionsHelper.scrollToElement(driver, locator);
+    }
+
+    protected boolean isScrolledToTop() {
+        return ActionsHelper.isScrolledToTop(driver);
+    }
+
+    // =========================================================================
+    // HOVER
+    // =========================================================================
 
     protected void hoverOver(WebElement element) {
-        ensureDriver();
         ActionsHelper.hoverOverElement(driver, element);
     }
 
-    // =====================
-    // AD HELPER
-    // =====================
+    protected void hoverOver(By locator) {
+        ActionsHelper.hoverOverElement(driver, locator);
+    }
+
+    // =========================================================================
+    // JS HELPERS
+    // =========================================================================
+
+    protected void jsClick(By locator) {
+        ActionsHelper.jsClick(driver, locator);
+    }
+
+    protected void jsClick(WebElement element) {
+        ActionsHelper.jsClick(driver, element);
+    }
 
     protected void hideAdIframes() {
-        ensureDriver();
         AlertHandler.hideAdIframes(driver);
     }
 }

@@ -3,165 +3,187 @@ package org.example.pages;
 import org.example.base.BasePage;
 import org.example.utils.WaitUtils;
 import org.openqa.selenium.By;
-import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebElement;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.WebDriverWait;
 
-import java.time.Duration;
 import java.util.List;
 
 /**
- * CartPage - Page Object for Cart, Checkout, and Payment pages
+ * CartPage — Page Object for Cart, Checkout, Payment, and Order Confirmation pages.
+ *
+ * Rules followed:
+ *  - No direct driver access except for findElements (list operations)
+ *  - No WaitUtils or ActionsHelper called directly
+ *  - No ensureDriver() — driver is guaranteed by BasePage constructor
  */
 public class CartPage extends BasePage {
 
     private static final Logger logger = LogManager.getLogger(CartPage.class);
 
-    // ── Cart Table ────────────────────────────────────────────────
-    private static final By CART_ROWS          = By.cssSelector("tbody tr[id^='product-']");
-    private static final By PRODUCT_NAME       = By.cssSelector("td.cart_description h4 a");
-    private static final By PRODUCT_PRICE      = By.cssSelector("td.cart_price p");
-    private static final By PRODUCT_QTY        = By.cssSelector("td.cart_quantity button");
-    private static final By PRODUCT_TOTAL      = By.cssSelector("td.cart_total p.cart_total_price");
-    private static final By DELETE_BTN         = By.cssSelector("a.cart_quantity_delete");
+    // ── Cart Table ─────────────────────────────────────────────────────────
+    private static final By CART_ROWS     = By.cssSelector("tbody tr[id^='product-']");
+    private static final By PRODUCT_NAME  = By.cssSelector("td.cart_description h4 a");
+    private static final By PRODUCT_PRICE = By.cssSelector("td.cart_price p");
+    private static final By PRODUCT_QTY   = By.cssSelector("td.cart_quantity button");
+    private static final By PRODUCT_TOTAL = By.cssSelector("td.cart_total p.cart_total_price");
+    private static final By DELETE_BTN    = By.cssSelector("a.cart_quantity_delete");
 
-    // ── Cart Navigation ───────────────────────────────────────────
-    private static final By CART_NAV           = By.cssSelector("a[href='/view_cart']");
+    // ── Cart Navigation ────────────────────────────────────────────────────
+    private static final By CART_NAV = By.cssSelector("a[href='/view_cart']");
 
-    // ── Checkout Modal (if not logged in) ─────────────────────────
-    private static final By CHECKOUT_MODAL          = By.cssSelector("div.modal-content");
-    private static final By MODAL_LOGIN_LINK         = By.cssSelector("div.modal-body a[href='/login']");
-    private static final By MODAL_CONTINUE_CART_BTN  = By.cssSelector("button.close-checkout-modal");
+    // ── Checkout Modal (when not logged in) ────────────────────────────────
+    private static final By CHECKOUT_MODAL         = By.cssSelector("div.modal-content");
+    private static final By MODAL_LOGIN_LINK        = By.cssSelector("div.modal-body a[href='/login']");
+    private static final By MODAL_CONTINUE_CART_BTN = By.cssSelector("button.close-checkout-modal");
 
-    // ── Checkout Page ─────────────────────────────────────────────
-    private static final By PROCEED_CHECKOUT   = By.cssSelector("a.btn.check_out");
-    private static final By DELIVERY_ADDRESS   = By.id("address_delivery");
-    private static final By BILLING_ADDRESS    = By.id("address_invoice");
-    private static final By ORDER_COMMENT      = By.cssSelector("#ordermsg textarea[name='message']");
-    private static final By PLACE_ORDER_BTN    = By.cssSelector("a.btn.check_out");
+    // ── Checkout Page ──────────────────────────────────────────────────────
+    // زرار Proceed to Checkout في الكارت
+    private static final By PROCEED_CHECKOUT = By.cssSelector("a.btn.check_out");
+    private static final By DELIVERY_ADDRESS = By.id("address_delivery");
+    private static final By BILLING_ADDRESS  = By.id("address_invoice");
+    private static final By ORDER_COMMENT    = By.cssSelector("textarea[name='message']");
+    // زرار Place Order في الـ checkout page — رابطه /payment
+    private static final By PLACE_ORDER_BTN  = By.cssSelector("a[href='/payment']");
 
-    // ── Payment Page ──────────────────────────────────────────────
-    private static final By CARD_NAME          = By.cssSelector("input[data-qa='name-on-card']");
-    private static final By CARD_NUMBER        = By.cssSelector("input[data-qa='card-number']");
-    private static final By CARD_CVC           = By.cssSelector("input[data-qa='cvc']");
-    private static final By CARD_EXPIRY_MONTH  = By.cssSelector("input[data-qa='expiry-month']");
-    private static final By CARD_EXPIRY_YEAR   = By.cssSelector("input[data-qa='expiry-year']");
-    private static final By PAY_CONFIRM_BTN    = By.cssSelector("button[data-qa='pay-button']");
+    // ── Payment Page ───────────────────────────────────────────────────────
+    private static final By CARD_NAME         = By.cssSelector("input[data-qa='name-on-card']");
+    private static final By CARD_NUMBER       = By.cssSelector("input[data-qa='card-number']");
+    private static final By CARD_CVC          = By.cssSelector("input[data-qa='cvc']");
+    private static final By CARD_EXPIRY_MONTH = By.cssSelector("input[data-qa='expiry-month']");
+    private static final By CARD_EXPIRY_YEAR  = By.cssSelector("input[data-qa='expiry-year']");
+    private static final By PAY_CONFIRM_BTN   = By.cssSelector("button[data-qa='pay-button']");
 
-    // ── Order Confirmed Page ──────────────────────────────────────
-    // Multiple fallback locators because the site uses different selectors depending on flow
-    private static final By ORDER_PLACED_MSG_1 = By.cssSelector("[data-qa='order-placed'] b");
-    private static final By ORDER_PLACED_MSG_2 = By.cssSelector("[data-qa='order-placed']");
-    private static final By ORDER_PLACED_MSG_3 = By.cssSelector("#success_message .alert-success");
-    private static final By ORDER_PLACED_MSG_4 = By.cssSelector("section[id] h2 b");
+    // ── Order Confirmation ─────────────────────────────────────────────────
+    // Multiple fallbacks — site uses different markup depending on the flow
+    private static final By ORDER_PLACED_1 = By.cssSelector("[data-qa='order-placed'] b");
+    private static final By ORDER_PLACED_2 = By.cssSelector("[data-qa='order-placed']");
+    private static final By ORDER_PLACED_3 = By.cssSelector("#success_message .alert-success");
+    private static final By ORDER_PLACED_4 = By.cssSelector("section[id] h2 b");
 
-    private static final By DOWNLOAD_INVOICE   = By.cssSelector("a[href*='download_invoice']");
-    private static final By CONTINUE_BTN       = By.cssSelector("a[data-qa='continue-button']");
+    private static final By DOWNLOAD_INVOICE = By.cssSelector("a[href*='download_invoice']");
+    private static final By CONTINUE_BTN     = By.cssSelector("a[data-qa='continue-button']");
 
-    // ── Footer Subscription ───────────────────────────────────────
-    private static final By SUBSCRIBE_EMAIL    = By.id("susbscribe_email");
-    private static final By SUBSCRIBE_BTN      = By.id("subscribe");
-    private static final By SUBSCRIBE_SUCCESS  = By.cssSelector("#success-subscribe .alert-success");
+    // ── Footer Subscription ────────────────────────────────────────────────
+    private static final By SUBSCRIBE_EMAIL   = By.id("susbscribe_email");
+    private static final By SUBSCRIBE_BTN     = By.id("subscribe");
+    private static final By SUBSCRIBE_SUCCESS = By.cssSelector("#success-subscribe .alert-success");
 
-    // ─────────────────────────────────────────────────────────────
+    // ── Constructor ────────────────────────────────────────────────────────
 
     public CartPage() {
         super();
     }
 
-    // ── Cart ──────────────────────────────────────────────────────
+    // =========================================================================
+    // CART
+    // =========================================================================
 
     public void navigateToCart() {
         click(CART_NAV);
-        logger.info("Navigated to cart");
+        logger.info("Navigated to Cart");
     }
 
     public int getCartItemCount() {
-        ensureDriver();  // FIX: must call ensureDriver() before using driver directly
-        List<WebElement> rows = driver.findElements(CART_ROWS);
-        logger.info("Cart item count: " + rows.size());
-        return rows.size();
+        return driver.findElements(CART_ROWS).size();
     }
 
     public String getProductNameByRow(int row) {
-        ensureDriver();  // FIX
         List<WebElement> names = driver.findElements(PRODUCT_NAME);
         String name = names.get(row - 1).getText();
-        logger.info("Product name row " + row + ": " + name);
+        logger.info("Product name at row {}: {}", row, name);
         return name;
     }
 
     public int getProductQuantityByRow(int row) {
-        ensureDriver();  // FIX
         List<WebElement> qtys = driver.findElements(PRODUCT_QTY);
         int qty = Integer.parseInt(qtys.get(row - 1).getText().trim());
-        logger.info("Product qty row " + row + ": " + qty);
+        logger.info("Product qty at row {}: {}", row, qty);
         return qty;
     }
 
     public String getProductPriceByRow(int row) {
-        ensureDriver();  // FIX
         List<WebElement> prices = driver.findElements(PRODUCT_PRICE);
         String price = prices.get(row - 1).getText();
-        logger.info("Product price row " + row + ": " + price);
+        logger.info("Product price at row {}: {}", row, price);
         return price;
     }
 
+    /**
+     * Removes a product row by 1-based index.
+     * Waits for the specific row's delete button to disappear — not the whole locator —
+     * to avoid a false timeout when other rows still have delete buttons.
+     */
     public void removeProductByRow(int row) {
-        ensureDriver();
         List<WebElement> deleteBtns = driver.findElements(DELETE_BTN);
         WebElement btn = deleteBtns.get(row - 1);
-        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", btn);
-
-        WaitUtils.waitForInvisibility(driver, DELETE_BTN);
-
-        logger.info("Removed product at row: " + row);
+        jsClick(btn);
+        // wait for that specific button to go stale / disappear
+        WaitUtils.waitForInvisibility(driver, By.cssSelector(
+                "tbody tr:nth-child(" + row + ") a.cart_quantity_delete"));
+        logger.info("Removed product at row {}", row);
     }
 
-
-
-    // ── Checkout Modal ────────────────────────────────────────────
+    // =========================================================================
+    // CHECKOUT MODAL
+    // =========================================================================
 
     public boolean isCheckoutModalVisible() {
         return isDisplayed(CHECKOUT_MODAL);
     }
 
     public void clickLoginFromModal() {
-        WaitUtils.waitForVisibility(driver, MODAL_LOGIN_LINK);
+        waitForVisibility(MODAL_LOGIN_LINK);
         click(MODAL_LOGIN_LINK);
-        logger.info("Clicked login link from checkout modal");
+        logger.info("Clicked Login link from checkout modal");
     }
 
     public void clickContinueOnCartFromModal() {
         click(MODAL_CONTINUE_CART_BTN);
-        logger.info("Clicked continue on cart from modal");
+        logger.info("Clicked Continue on cart from modal");
     }
 
-    // ── Checkout ──────────────────────────────────────────────────
+    // =========================================================================
+    // CHECKOUT
+    // =========================================================================
 
     public void clickProceedToCheckout() {
+        // scroll to button first — it sits at the bottom of the cart table
+        scrollToElement(PROCEED_CHECKOUT);
         click(PROCEED_CHECKOUT);
         logger.info("Clicked Proceed to Checkout");
     }
 
     public String getDeliveryAddress() {
-        String address = getText(DELIVERY_ADDRESS);
-        logger.info("Delivery address: " + address);
-        return address;
+        return getText(DELIVERY_ADDRESS);
     }
 
     public String getBillingAddress() {
-        String address = getText(BILLING_ADDRESS);
-        logger.info("Billing address: " + address);
-        return address;
+        return getText(BILLING_ADDRESS);
     }
 
     public void enterOrderComment(String comment) {
-        sendKeys(ORDER_COMMENT, comment);
-        logger.info("Entered order comment: " + comment);
+        // scroll to bottom first
+        ((org.openqa.selenium.JavascriptExecutor) driver)
+                .executeScript("window.scrollTo(0, document.body.scrollHeight);");
+
+        waitForVisibility(ORDER_COMMENT);
+
+        WebElement textarea = driver.findElement(ORDER_COMMENT);
+
+        // scrollIntoView
+        ((org.openqa.selenium.JavascriptExecutor) driver)
+                .executeScript("arguments[0].scrollIntoView({block:'center'});", textarea);
+
+        // JS setValue — bypass any focus/interactability issues
+        ((org.openqa.selenium.JavascriptExecutor) driver)
+                .executeScript("arguments[0].value = arguments[1];", textarea, comment);
+
+        // trigger input event so the page registers the value
+        ((org.openqa.selenium.JavascriptExecutor) driver)
+                .executeScript("arguments[0].dispatchEvent(new Event('input'));", textarea);
+
+        logger.info("Entered order comment: {}", comment);
     }
 
     public void clickPlaceOrder() {
@@ -169,11 +191,13 @@ public class CartPage extends BasePage {
         logger.info("Clicked Place Order");
     }
 
-    // ── Payment ───────────────────────────────────────────────────
+    // =========================================================================
+    // PAYMENT
+    // =========================================================================
 
     public void enterCardName(String name) {
         sendKeys(CARD_NAME, name);
-        logger.info("Entered card name: " + name);
+        logger.info("Entered card name: {}", name);
     }
 
     public void enterCardNumber(String number) {
@@ -188,12 +212,12 @@ public class CartPage extends BasePage {
 
     public void enterCardExpiryMonth(String month) {
         sendKeys(CARD_EXPIRY_MONTH, month);
-        logger.info("Entered expiry month: " + month);
+        logger.info("Entered expiry month: {}", month);
     }
 
     public void enterCardExpiryYear(String year) {
         sendKeys(CARD_EXPIRY_YEAR, year);
-        logger.info("Entered expiry year: " + year);
+        logger.info("Entered expiry year: {}", year);
     }
 
     public void clickConfirmOrder() {
@@ -201,32 +225,27 @@ public class CartPage extends BasePage {
         logger.info("Clicked Pay and Confirm Order");
     }
 
-    // ── Order Confirmed ───────────────────────────────────────────
+    // =========================================================================
+    // ORDER CONFIRMATION
+    // =========================================================================
 
     /**
-     * FIX: The site renders the order confirmation with the text inside a <b> tag
-     * under [data-qa='order-placed'], OR sometimes in #success_message.
-     * We try multiple locators and return the first non-empty text found.
+     * Tries multiple locators to find the order placed message.
+     * The site renders different markup depending on the checkout flow.
      */
     public String getOrderPlacedMessage() {
-        ensureDriver();
-        By[] candidates = {
-                ORDER_PLACED_MSG_1,
-                ORDER_PLACED_MSG_2,
-                ORDER_PLACED_MSG_3,
-                ORDER_PLACED_MSG_4
-        };
+        By[] candidates = { ORDER_PLACED_1, ORDER_PLACED_2, ORDER_PLACED_3, ORDER_PLACED_4 };
 
         for (By locator : candidates) {
             try {
-                WaitUtils.waitForVisibility(driver, locator);
+                waitForVisibility(locator);
                 String msg = driver.findElement(locator).getText();
                 if (msg != null && !msg.trim().isEmpty()) {
-                    logger.info("Order placed message found via " + locator + ": " + msg);
+                    logger.info("Order placed message found via {}: {}", locator, msg);
                     return msg;
                 }
             } catch (Exception e) {
-                logger.debug("Locator not found: " + locator);
+                logger.debug("Order locator not found: {}", locator);
             }
         }
 
@@ -235,7 +254,7 @@ public class CartPage extends BasePage {
     }
 
     public void clickDownloadInvoice() {
-        WaitUtils.waitForVisibility(driver, DOWNLOAD_INVOICE);
+        waitForVisibility(DOWNLOAD_INVOICE);
         click(DOWNLOAD_INVOICE);
         logger.info("Clicked Download Invoice");
     }
@@ -245,27 +264,22 @@ public class CartPage extends BasePage {
         logger.info("Clicked Continue after order");
     }
 
-    // ── Footer Subscription ───────────────────────────────────────
+    // =========================================================================
+    // FOOTER SUBSCRIPTION
+    // =========================================================================
 
     public void enterSubscriptionEmail(String email) {
         sendKeys(SUBSCRIBE_EMAIL, email);
-        logger.info("Entered subscription email: " + email);
+        logger.info("Entered subscription email: {}", email);
     }
 
     public void clickSubscribeButton() {
         click(SUBSCRIBE_BTN);
-        logger.info("Clicked subscribe button");
+        logger.info("Clicked Subscribe");
     }
 
     public String getSubscriptionSuccessMessage() {
-        WaitUtils.waitForVisibility(driver, SUBSCRIBE_SUCCESS);
-        String msg = getText(SUBSCRIBE_SUCCESS);
-        logger.info("Subscription success: " + msg);
-        return msg;
-    }
-
-    // ── Kept for compatibility ────────────────────────────────────
-    public String getOrderCommentText() {
-        return getText(ORDER_COMMENT);
+        waitForVisibility(SUBSCRIBE_SUCCESS);
+        return getText(SUBSCRIBE_SUCCESS);
     }
 }

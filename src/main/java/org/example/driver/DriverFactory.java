@@ -59,7 +59,7 @@ public class DriverFactory {
 
                 FirefoxOptions firefoxOptions = new FirefoxOptions();
 
-                // لو Firefox مش في الـ PATH، حدد مكانه هنا
+
                 firefoxOptions.setBinary("C:\\Program Files\\Mozilla Firefox\\firefox.exe");
 
                 if (Boolean.parseBoolean(ConfigReader.getProperty("headless.mode"))) {

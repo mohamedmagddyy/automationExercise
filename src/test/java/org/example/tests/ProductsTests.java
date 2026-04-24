@@ -16,161 +16,163 @@ import io.qameta.allure.SeverityLevel;
 public class ProductsTests extends BaseTest {
 
     private static final Logger logger = LogManager.getLogger(ProductsTests.class);
+
     private ProductsPage productsPage;
     private SignupLoginPage signupLoginPage;
 
-    @BeforeMethod(alwaysRun = true)
-    public void initPage() {
+    @BeforeMethod(alwaysRun = true, dependsOnMethods = "setup")
+    public void initPages() {
         getDriver().manage().deleteAllCookies();
-        productsPage  = new ProductsPage();
+        productsPage    = new ProductsPage();
         signupLoginPage = new SignupLoginPage();
-        logger.info("Pages initialized");
+        logger.info("ProductsTests pages initialized");
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // TC08 - Verify all products and product detail
+    // ─────────────────────────────────────────────────────────────────────────
     @Test(groups = {"smoke", "regression", "priority:critical"})
     @Severity(SeverityLevel.CRITICAL)
     public void TC08_VerifyAllProductsAndProductDetail() {
         logger.info("Starting TC08_VerifyAllProductsAndProductDetail");
 
-        logger.info("Navigating to products page");
         productsPage.navigateToProductsPage();
 
-        logger.info("Getting product count");
         int count = productsPage.getSearchResultCount();
-        Assert.assertTrue(count > 0, "Products list should not be empty");
+        Assert.assertTrue(count > 0,
+                "TC08 FAILED — Products list should not be empty");
 
-        logger.info("Clicking view product at index 1");
         productsPage.clickViewProductByIndex(1);
 
         String name  = productsPage.getProductName();
         String price = productsPage.getProductPrice();
 
-        Assert.assertFalse(name.isEmpty(),  "Product name should not be empty");
-        Assert.assertFalse(price.isEmpty(), "Product price should not be empty");
+        Assert.assertFalse(name.isEmpty(),
+                "TC08 FAILED — Product name should not be empty");
+        Assert.assertFalse(price.isEmpty(),
+                "TC08 FAILED — Product price should not be empty");
 
-        logger.info("TC08 completed successfully");
+        logger.info("TC08 PASSED — products: {}, name: {}, price: {}", count, name, price);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // TC09 - Search product
+    // ─────────────────────────────────────────────────────────────────────────
     @Test(groups = {"functional", "regression", "priority:high"})
     @Severity(SeverityLevel.NORMAL)
     public void TC09_SearchProduct() {
         logger.info("Starting TC09_SearchProduct");
 
-        String searchProduct = TestDataReader.getRequiredProperty("search.product");
-        logger.info("Search term: " + searchProduct);
+        String searchTerm = TestDataReader.getRequiredProperty("search.product");
 
-        logger.info("Navigating to products page");
         productsPage.navigateToProductsPage();
-
-        logger.info("Searching for: " + searchProduct);
-        productsPage.searchProduct(searchProduct);
+        productsPage.searchProduct(searchTerm);
 
         int resultCount = productsPage.getSearchResultCount();
-        Assert.assertTrue(resultCount > 0, "Search results should be found");
+        Assert.assertTrue(resultCount > 0,
+                "TC09 FAILED — Search results should not be empty for: " + searchTerm);
 
-        logger.info("TC09 completed successfully");
+        logger.info("TC09 PASSED — found {} results for '{}'", resultCount, searchTerm);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // TC18 - View category products
+    // ─────────────────────────────────────────────────────────────────────────
     @Test(groups = {"functional", "regression", "priority:high"})
     @Severity(SeverityLevel.NORMAL)
     public void TC18_ViewCategoryProducts() {
         logger.info("Starting TC18_ViewCategoryProducts");
 
-        logger.info("Navigating to products page");
         productsPage.navigateToProductsPage();
-
-        logger.info("Navigating to category Women > Dress");
         productsPage.navigateToCategoryByName("Women", "Dress");
 
         String title = productsPage.getCategoryPageTitle();
+        String normalizedTitle = title.trim().toLowerCase();
+
         Assert.assertTrue(
-                title.toLowerCase().contains("women") || title.toLowerCase().contains("dress"),
-                "Category title mismatch: " + title
+                normalizedTitle.contains("women") || normalizedTitle.contains("dress"),
+                "TC18 FAILED — Category title mismatch. Actual: " + title
         );
 
-        Assert.assertTrue(productsPage.getSearchResultCount() > 0,
-                "Category products should be visible");
+        int count = productsPage.getSearchResultCount();
+        Assert.assertTrue(count > 0,
+                "TC18 FAILED — Category products should not be empty");
 
-        logger.info("TC18 completed successfully");
+        logger.info("TC18 PASSED — title: {}, products: {}", title, count);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // TC19 - View and cart brand products
+    // ─────────────────────────────────────────────────────────────────────────
     @Test(groups = {"functional", "priority:medium"})
     @Severity(SeverityLevel.MINOR)
     public void TC19_ViewAndCartBrandProducts() {
         logger.info("Starting TC19_ViewAndCartBrandProducts");
 
-        logger.info("Navigating to products page");
         productsPage.navigateToProductsPage();
-
-        logger.info("Navigating to brand Polo");
         productsPage.navigateToBrandByName("Polo");
 
         String title = productsPage.getBrandPageTitle();
-        Assert.assertFalse(title.isEmpty(), "Brand title should not be empty");
+        Assert.assertFalse(title.isEmpty(),
+                "TC19 FAILED — Brand page title should not be empty");
 
-        logger.info("Adding product at index 1 to cart");
-        productsPage.addProductToCartByIndex(1);
+        int count = productsPage.getSearchResultCount();
+        Assert.assertTrue(count > 0,
+                "TC19 FAILED — Brand products should not be empty");
 
-        logger.info("TC19 completed successfully");
+        logger.info("TC19 PASSED — brand: {}, products: {}", title, count);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // TC20 - Search products and verify cart after login
+    // ─────────────────────────────────────────────────────────────────────────
     @Test(groups = {"functional", "regression", "priority:high"})
     @Severity(SeverityLevel.NORMAL)
     public void TC20_SearchProductsAndVerifyCartAfterLogin() {
         logger.info("Starting TC20_SearchProductsAndVerifyCartAfterLogin");
 
-        String searchProduct = TestDataReader.getRequiredProperty("search.product");
+        String searchTerm = TestDataReader.getRequiredProperty("search.product");
 
-        logger.info("Navigating to products page");
         productsPage.navigateToProductsPage();
-
-        logger.info("Searching for: " + searchProduct);
-        productsPage.searchProduct(searchProduct);
-
-        logger.info("Adding product at index 1 to cart");
+        productsPage.searchProduct(searchTerm);
         productsPage.addProductToCartByIndex(1);
 
-        logger.info("Navigating to login page");
-        getDriver().get(ConfigReader.getBaseUrl() + "/login");
-
-        logger.info("Logging in");
+        getDriver().get(ConfigReader.getBaseUrl() + "login");
         signupLoginPage.enterLoginEmail(TestDataReader.getRequiredProperty("valid.email"));
         signupLoginPage.enterLoginPassword(TestDataReader.getRequiredProperty("valid.password"));
         signupLoginPage.clickLoginButton();
 
-        logger.info("Verifying login success - checking logged-in username");
         String loggedInUser = signupLoginPage.getLoggedInUsername();
-        Assert.assertFalse(loggedInUser.isEmpty(), "User should be logged in");
+        Assert.assertFalse(loggedInUser.isEmpty(),
+                "TC20 FAILED — User should be logged in after login");
 
-        logger.info("TC20 completed successfully");
+        logger.info("TC20 PASSED — logged in as: {}", loggedInUser);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // TC21 - Add review on product
+    // ─────────────────────────────────────────────────────────────────────────
     @Test(groups = {"functional", "priority:medium"})
     @Severity(SeverityLevel.MINOR)
     public void TC21_AddReviewOnProduct() {
         logger.info("Starting TC21_AddReviewOnProduct");
 
-        logger.info("Navigating to products page");
         productsPage.navigateToProductsPage();
-
-        logger.info("Clicking view product at index 1");
         productsPage.clickViewProductByIndex(1);
 
-        logger.info("Adding review");
         productsPage.addReview(
-                "John Doe",
-                "john@test.com",
-                "Great product, highly recommended!"
+                TestDataReader.getRequiredProperty("review.name"),
+                TestDataReader.getRequiredProperty("review.email"),
+                TestDataReader.getRequiredProperty("review.text")
         );
 
-        String message = productsPage.getReviewSuccessMessage();
+        String msg = productsPage.getReviewSuccessMessage();
         Assert.assertTrue(
-                message.toLowerCase().contains("thank")
-                        || message.toLowerCase().contains("success")
-                        || message.toLowerCase().contains("review"),
-                "Review success message not displayed correctly"
-        );
+                msg.toLowerCase().contains("thank")
+                        || msg.toLowerCase().contains("success")
+                        || msg.toLowerCase().contains("review"),
+                "TC21 FAILED — Review success message not found. Actual: " + msg);
 
-        logger.info("TC21 completed successfully");
+        logger.info("TC21 PASSED — review message: {}", msg);
     }
 }

@@ -35,10 +35,13 @@ build/
 ### VS Code ###
 .vscode/
 
-.allure-results/
+
 
 ### Mac OS ###
 .DS_Store
 
 ### allure results ###
 allure-results/
+
+.allure
+.allure-report/

@@ -17,48 +17,83 @@ import io.qameta.allure.SeverityLevel;
 public class CartTests extends BaseTest {
 
     private static final Logger logger = LogManager.getLogger(CartTests.class);
+
     private CartPage cartPage;
     private ProductsPage productsPage;
+    private SignupLoginPage signupLoginPage;
 
-    @BeforeMethod(alwaysRun = true)
-    public void initPage() {
+    @BeforeMethod(alwaysRun = true, dependsOnMethods = "setup")
+    public void initPages() {
         getDriver().manage().deleteAllCookies();
         getDriver().get(ConfigReader.getBaseUrl());
-
-        cartPage = new CartPage();
-        productsPage = new ProductsPage();
-        logger.info("CartPage and ProductsPage initialized - fresh session");
+        cartPage        = new CartPage();
+        productsPage    = new ProductsPage();
+        signupLoginPage = new SignupLoginPage();
+        logger.info("CartTests pages initialized — fresh session");
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // TC11 - Subscription في الـ footer من صفحة الكارت
+    // Helper: login with valid credentials
+    // ─────────────────────────────────────────────────────────────────────────
+    private void loginWithValidCredentials() {
+        getDriver().get(ConfigReader.getBaseUrl() + "login");
+        signupLoginPage.enterLoginEmail(TestDataReader.getRequiredProperty("valid.email"));
+        signupLoginPage.enterLoginPassword(TestDataReader.getRequiredProperty("valid.password"));
+        signupLoginPage.clickLoginButton();
+        logger.info("Logged in with valid credentials");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Helper: fill payment form and confirm order
+    // ─────────────────────────────────────────────────────────────────────────
+    private void fillPaymentAndConfirm() {
+        cartPage.enterCardName(TestDataReader.getRequiredProperty("card.name"));
+        cartPage.enterCardNumber(TestDataReader.getRequiredProperty("card.number"));
+        cartPage.enterCardCVC(TestDataReader.getRequiredProperty("card.cvc"));
+        cartPage.enterCardExpiryMonth(TestDataReader.getRequiredProperty("card.expiryMonth"));
+        cartPage.enterCardExpiryYear(TestDataReader.getRequiredProperty("card.expiryYear"));
+        cartPage.clickConfirmOrder();
+        logger.info("Payment form filled and order confirmed");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Helper: assert order placed message
+    // ─────────────────────────────────────────────────────────────────────────
+    private void assertOrderPlaced(String testName) {
+        String msg = cartPage.getOrderPlacedMessage();
+        Assert.assertTrue(
+                msg.toLowerCase().contains("placed") || msg.toLowerCase().contains("order"),
+                testName + " FAILED — Order placed message not found. Actual: " + msg);
+        logger.info("{} PASSED — order message: {}", testName, msg);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // TC11 - Verify subscription in Cart page
     // ─────────────────────────────────────────────────────────────────────────
     @Test(groups = {"functional", "priority:medium"})
     @Severity(SeverityLevel.MINOR)
     public void TC11_VerifySubscriptionInCartPage() {
-        logger.info("Starting TC11");
+        logger.info("Starting TC11_VerifySubscriptionInCartPage");
 
         cartPage.navigateToCart();
-
-        cartPage.enterSubscriptionEmail(TestDataReader.getProperty("subscription.email"));
+        cartPage.enterSubscriptionEmail(TestDataReader.getRequiredProperty("subscription.email"));
         cartPage.clickSubscribeButton();
 
-        String message = cartPage.getSubscriptionSuccessMessage();
+        String msg = cartPage.getSubscriptionSuccessMessage();
         Assert.assertTrue(
-                message.contains("success") || message.contains("Success"),
-                "Subscription success message not found"
-        );
+                msg.toLowerCase().contains("success"),
+                "TC11 FAILED — Subscription success message not found. Actual: " + msg);
 
-        logger.info("TC11 completed - message: " + message);
+        logger.info("TC11 PASSED — message: {}", msg);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // TC12 - إضافة منتجين للكارت والتحقق
+    // TC12 - Add two products to cart and verify
     // ─────────────────────────────────────────────────────────────────────────
     @Test(groups = {"smoke", "regression", "priority:critical"})
     @Severity(SeverityLevel.CRITICAL)
     public void TC12_AddProductsInCart() {
-        logger.info("Starting TC12");
+        logger.info("Starting TC12_AddProductsInCart");
 
         productsPage.navigateToProductsPage();
         productsPage.addProductToCartByIndex(1);
@@ -68,18 +103,19 @@ public class CartTests extends BaseTest {
         productsPage.clickViewCart();
 
         int itemCount = cartPage.getCartItemCount();
-        Assert.assertTrue(itemCount >= 2, "Cart should have at least 2 items");
+        Assert.assertTrue(itemCount >= 2,
+                "TC12 FAILED — Cart should have at least 2 items. Actual: " + itemCount);
 
-        logger.info("TC12 completed - items: " + itemCount);
+        logger.info("TC12 PASSED — cart items: {}", itemCount);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // TC13 - التحقق من الكمية في الكارت
+    // TC13 - Verify product quantity in cart
     // ─────────────────────────────────────────────────────────────────────────
     @Test(groups = {"functional", "regression", "priority:high"})
     @Severity(SeverityLevel.NORMAL)
     public void TC13_VerifyProductQuantityInCart() {
-        logger.info("Starting TC13");
+        logger.info("Starting TC13_VerifyProductQuantityInCart");
 
         productsPage.navigateToProductsPage();
         productsPage.clickViewProductByIndex(1);
@@ -87,37 +123,33 @@ public class CartTests extends BaseTest {
         productsPage.clickAddToCart();
         productsPage.clickViewCart();
 
-        int quantity = cartPage.getProductQuantityByRow(1);
-        Assert.assertEquals(quantity, 5, "Product quantity should be 5");
+        int qty = cartPage.getProductQuantityByRow(1);
+        Assert.assertEquals(qty, 5,
+                "TC13 FAILED — Product quantity should be 5. Actual: " + qty);
 
-        logger.info("TC13 completed - quantity: " + quantity);
+        logger.info("TC13 PASSED — quantity: {}", qty);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // TC14 - الأوردر مع التسجيل أثناء الـ checkout
-    // الـ flow: كارت ← checkout ← modal ← login/register ← ارجع كارت ← أوردر
+    // TC14 - Place order: register while checkout
     // ─────────────────────────────────────────────────────────────────────────
     @Test(groups = {"functional", "regression", "priority:critical"})
     @Severity(SeverityLevel.CRITICAL)
     public void TC14_PlaceOrderRegisterWhileCheckout() {
-        logger.info("Starting TC14");
+        logger.info("Starting TC14_PlaceOrderRegisterWhileCheckout");
 
         String email = TestDataReader.generateDynamicEmail();
-        SignupLoginPage signupLoginPage = new SignupLoginPage();
 
         // أضف منتج للكارت
         productsPage.navigateToProductsPage();
         productsPage.addProductToCartByIndex(1);
         productsPage.clickViewCart();
 
-        // اضغط checkout - هيطلع modal لأنك مش logged in
+        // checkout → modal → register
         cartPage.clickProceedToCheckout();
-
-        // من الـ modal اضغط Register/Login
         cartPage.clickLoginFromModal();
 
-        // سجل اكانت جديد
-        signupLoginPage.enterSignupName(TestDataReader.getProperty("register.name"));
+        signupLoginPage.enterSignupName(TestDataReader.getRequiredProperty("register.name"));
         signupLoginPage.enterSignupEmail(email);
         signupLoginPage.clickSignupButton();
 
@@ -144,40 +176,26 @@ public class CartTests extends BaseTest {
         // ارجع للكارت وأكمل الأوردر
         cartPage.navigateToCart();
         cartPage.clickProceedToCheckout();
-
         cartPage.enterOrderComment(TestDataReader.getRequiredProperty("order.comment.delivery.time"));
         cartPage.clickPlaceOrder();
 
-        cartPage.enterCardName(TestDataReader.getRequiredProperty("card.name"));
-        cartPage.enterCardNumber(TestDataReader.getRequiredProperty("card.number"));
-        cartPage.enterCardCVC(TestDataReader.getRequiredProperty("card.cvc"));
-        cartPage.enterCardExpiryMonth(TestDataReader.getRequiredProperty("card.expiryMonth"));
-        cartPage.enterCardExpiryYear(TestDataReader.getRequiredProperty("card.expiryYear"));
-        cartPage.clickConfirmOrder();
-
-        String message = cartPage.getOrderPlacedMessage();
-        Assert.assertTrue(
-                message.contains("placed successfully") || message.contains("ORDER PLACED") || message.contains("placed"),
-                "Order placed message not found"
-        );
-
-        logger.info("TC14 completed - message: " + message);
+        fillPaymentAndConfirm();
+        assertOrderPlaced("TC14");
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // TC15 - التسجيل قبل الـ checkout
+    // TC15 - Place order: register before checkout
     // ─────────────────────────────────────────────────────────────────────────
     @Test(groups = {"functional", "regression", "priority:critical"})
     @Severity(SeverityLevel.CRITICAL)
     public void TC15_PlaceOrderRegisterBeforeCheckout() {
-        logger.info("Starting TC15");
+        logger.info("Starting TC15_PlaceOrderRegisterBeforeCheckout");
 
         String email = TestDataReader.generateDynamicEmail();
-        SignupLoginPage signupLoginPage = new SignupLoginPage();
 
-        // سجل اكانت جديد
-        getDriver().get(ConfigReader.getBaseUrl() + "/login");
-        signupLoginPage.enterSignupName(TestDataReader.getProperty("register.name"));
+        // register أولاً
+        getDriver().get(ConfigReader.getBaseUrl() + "login");
+        signupLoginPage.enterSignupName(TestDataReader.getRequiredProperty("register.name"));
         signupLoginPage.enterSignupEmail(email);
         signupLoginPage.clickSignupButton();
 
@@ -206,151 +224,109 @@ public class CartTests extends BaseTest {
         productsPage.addProductToCartByIndex(1);
         productsPage.clickViewCart();
         cartPage.clickProceedToCheckout();
-
         cartPage.enterOrderComment(TestDataReader.getRequiredProperty("order.comment.safe.delivery"));
         cartPage.clickPlaceOrder();
 
-        cartPage.enterCardName(TestDataReader.getRequiredProperty("card.name"));
-        cartPage.enterCardNumber(TestDataReader.getRequiredProperty("card.number"));
-        cartPage.enterCardCVC(TestDataReader.getRequiredProperty("card.cvc"));
-        cartPage.enterCardExpiryMonth(TestDataReader.getRequiredProperty("card.expiryMonth"));
-        cartPage.enterCardExpiryYear(TestDataReader.getRequiredProperty("card.expiryYear"));
-        cartPage.clickConfirmOrder();
-
-        String message = cartPage.getOrderPlacedMessage();
-        Assert.assertTrue(
-                message.contains("placed successfully") || message.contains("ORDER PLACED") || message.contains("placed"),
-                "Order placed message not found"
-        );
-
-        logger.info("TC15 completed - message: " + message);
+        fillPaymentAndConfirm();
+        assertOrderPlaced("TC15");
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // TC16 - اللوجين قبل الـ checkout
+    // TC16 - Place order: login before checkout
     // ─────────────────────────────────────────────────────────────────────────
     @Test(groups = {"smoke", "regression", "priority:critical"})
     @Severity(SeverityLevel.CRITICAL)
     public void TC16_PlaceOrderLoginBeforeCheckout() {
-        logger.info("Starting TC16");
+        logger.info("Starting TC16_PlaceOrderLoginBeforeCheckout");
 
-        SignupLoginPage signupLoginPage = new SignupLoginPage();
-
-        getDriver().get(ConfigReader.getBaseUrl() + "/login");
-        signupLoginPage.enterLoginEmail(TestDataReader.getProperty("valid.email"));
-        signupLoginPage.enterLoginPassword(TestDataReader.getProperty("valid.password"));
-        signupLoginPage.clickLoginButton();
+        loginWithValidCredentials();
 
         productsPage.navigateToProductsPage();
         productsPage.addProductToCartByIndex(1);
         productsPage.clickViewCart();
         cartPage.clickProceedToCheckout();
 
-        Assert.assertFalse(cartPage.getDeliveryAddress().isEmpty(), "Delivery address should not be empty");
+        String deliveryAddress = cartPage.getDeliveryAddress();
+        Assert.assertFalse(deliveryAddress.isEmpty(),
+                "TC16 FAILED — Delivery address should not be empty");
 
         cartPage.enterOrderComment(TestDataReader.getRequiredProperty("order.comment.convenience"));
         cartPage.clickPlaceOrder();
 
-        cartPage.enterCardName(TestDataReader.getRequiredProperty("card.name"));
-        cartPage.enterCardNumber(TestDataReader.getRequiredProperty("card.number"));
-        cartPage.enterCardCVC(TestDataReader.getRequiredProperty("card.cvc"));
-        cartPage.enterCardExpiryMonth(TestDataReader.getRequiredProperty("card.expiryMonth"));
-        cartPage.enterCardExpiryYear(TestDataReader.getRequiredProperty("card.expiryYear"));
-        cartPage.clickConfirmOrder();
-
-        String message = cartPage.getOrderPlacedMessage();
-        Assert.assertTrue(
-                message.contains("placed successfully") || message.contains("ORDER PLACED") || message.contains("placed"),
-                "Order placed message not found"
-        );
-
-        logger.info("TC16 completed - message: " + message);
+        fillPaymentAndConfirm();
+        assertOrderPlaced("TC16");
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // TC17 - حذف منتج من الكارت
+    // TC17 - Remove product from cart
     // ─────────────────────────────────────────────────────────────────────────
     @Test(groups = {"functional", "regression", "priority:high"})
     @Severity(SeverityLevel.NORMAL)
     public void TC17_RemoveProductsFromCart() {
-        logger.info("Starting TC17");
+        logger.info("Starting TC17_RemoveProductsFromCart");
 
         productsPage.navigateToProductsPage();
         productsPage.addProductToCartByIndex(1);
         productsPage.clickViewCart();
 
+        int before = cartPage.getCartItemCount();
         cartPage.removeProductByRow(1);
+        int after = cartPage.getCartItemCount();
 
-        int finalCount = cartPage.getCartItemCount();
-        Assert.assertTrue(finalCount >= 0, "Cart item count should be non-negative"
-        );
-        logger.info("TC17 completed - before: " +  " after: " + finalCount);
+        Assert.assertTrue(after < before,
+                "TC17 FAILED — Cart count should decrease after removal. Before: " + before + ", After: " + after);
+
+        logger.info("TC17 PASSED — before: {}, after: {}", before, after);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // TC23 - التحقق من العناوين في الـ checkout
+    // TC23 - Verify address details in checkout
     // ─────────────────────────────────────────────────────────────────────────
     @Test(groups = {"functional", "regression", "priority:high"})
     @Severity(SeverityLevel.NORMAL)
     public void TC23_VerifyAddressDetailsInCheckout() {
-        logger.info("Starting TC23");
+        logger.info("Starting TC23_VerifyAddressDetailsInCheckout");
 
-        SignupLoginPage signupLoginPage = new SignupLoginPage();
-
-        getDriver().get(ConfigReader.getBaseUrl() + "/login");
-        signupLoginPage.enterLoginEmail(TestDataReader.getProperty("valid.email"));
-        signupLoginPage.enterLoginPassword(TestDataReader.getProperty("valid.password"));
-        signupLoginPage.clickLoginButton();
+        loginWithValidCredentials();
 
         productsPage.navigateToProductsPage();
         productsPage.addProductToCartByIndex(1);
         productsPage.clickViewCart();
         cartPage.clickProceedToCheckout();
 
-        Assert.assertFalse(cartPage.getDeliveryAddress().isEmpty(), "Delivery address should not be empty");
-        Assert.assertFalse(cartPage.getBillingAddress().isEmpty(), "Billing address should not be empty");
+        String delivery = cartPage.getDeliveryAddress();
+        String billing  = cartPage.getBillingAddress();
 
-        logger.info("TC23 completed successfully");
+        Assert.assertFalse(delivery.isEmpty(),
+                "TC23 FAILED — Delivery address should not be empty");
+        Assert.assertFalse(billing.isEmpty(),
+                "TC23 FAILED — Billing address should not be empty");
+
+        logger.info("TC23 PASSED — delivery and billing addresses verified");
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // TC24 - تحميل الفاتورة بعد الأوردر
+    // TC24 - Download invoice after purchase
     // ─────────────────────────────────────────────────────────────────────────
     @Test(groups = {"functional", "priority:medium"})
     @Severity(SeverityLevel.MINOR)
     public void TC24_DownloadInvoiceAfterPurchase() {
-        logger.info("Starting TC24");
+        logger.info("Starting TC24_DownloadInvoiceAfterPurchase");
 
-        SignupLoginPage signupLoginPage = new SignupLoginPage();
-
-        getDriver().get(ConfigReader.getBaseUrl() + "/login");
-        signupLoginPage.enterLoginEmail(TestDataReader.getProperty("valid.email"));
-        signupLoginPage.enterLoginPassword(TestDataReader.getProperty("valid.password"));
-        signupLoginPage.clickLoginButton();
+        loginWithValidCredentials();
 
         productsPage.navigateToProductsPage();
         productsPage.addProductToCartByIndex(1);
         productsPage.clickViewCart();
         cartPage.clickProceedToCheckout();
-
         cartPage.enterOrderComment(TestDataReader.getRequiredProperty("order.comment.test"));
         cartPage.clickPlaceOrder();
 
-        cartPage.enterCardName(TestDataReader.getRequiredProperty("card.name"));
-        cartPage.enterCardNumber(TestDataReader.getRequiredProperty("card.number"));
-        cartPage.enterCardCVC(TestDataReader.getRequiredProperty("card.cvc"));
-        cartPage.enterCardExpiryMonth(TestDataReader.getRequiredProperty("card.expiryMonth"));
-        cartPage.enterCardExpiryYear(TestDataReader.getRequiredProperty("card.expiryYear"));
-        cartPage.clickConfirmOrder();
-
-        String message = cartPage.getOrderPlacedMessage();
-        Assert.assertTrue(
-                message.contains("placed successfully") || message.contains("ORDER PLACED") || message.contains("placed"),
-                "Order placed message not found"
-        );
+        fillPaymentAndConfirm();
+        assertOrderPlaced("TC24");
 
         cartPage.clickDownloadInvoice();
 
-        logger.info("TC24 completed successfully");
+        logger.info("TC24 PASSED — invoice download clicked");
     }
 }

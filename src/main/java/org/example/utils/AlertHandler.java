@@ -9,85 +9,95 @@ import org.apache.logging.log4j.Logger;
 import java.time.Duration;
 
 /**
- * AlertHandler - Handles browser alerts and UI overlays safely
+ * AlertHandler — Pure utility for handling browser alerts and UI overlays.
+ *
+ * Rules:
+ *  - Never called inside click() or sendKeys() — only called ONCE per page load
+ *  - All methods are safe (never throw exceptions to caller)
+ *  - Short timeouts intentionally to avoid slowing down tests
  */
 public class AlertHandler {
 
     private static final Logger logger = LogManager.getLogger(AlertHandler.class);
 
-    // Cookie consent button locators
+    // ── Consent button locators (ordered by priority) ──────────────────────
     private static final By[] CONSENT_BUTTONS = {
             By.cssSelector("button.fc-button.fc-cta-consent.fc-primary-button"),
             By.cssSelector("button[class*='accept-cookie']"),
             By.cssSelector("button[class*='accept-consent']"),
             By.id("acceptCookie"),
-            By.xpath("//button[contains(text(), 'Accept')]"),
             By.xpath("//button[contains(text(), 'Accept All')]"),
+            By.xpath("//button[contains(text(), 'Accept')]"),
             By.xpath("//button[contains(text(), 'Agree')]"),
             By.xpath("//button[contains(@aria-label, 'Accept')]")
     };
 
-    // Blocking overlay locators
+    // ── Blocking overlay locators ──────────────────────────────────────────
     private static final By[] BLOCKING_OVERLAYS = {
             By.cssSelector("div.fc-consent-root"),
             By.cssSelector("[class*='cookie-banner']"),
             By.cssSelector("[class*='modal-backdrop']"),
             By.cssSelector("[class*='overlay-active']"),
             By.cssSelector("[class*='popup-overlay']"),
-            By.xpath("//div[@class='modal-backdrop' and contains(@style, 'display')]")
+            By.xpath("//div[@class='modal-backdrop' and contains(@style,'display')]")
     };
 
+    // ── Wait factories ─────────────────────────────────────────────────────
+
+    /** Standard wait — used for browser alert detection. */
     private static WebDriverWait getWait(WebDriver driver) {
         return new WebDriverWait(driver, Duration.ofSeconds(5));
     }
 
+    /**
+     * Short wait (1s) — used for consent/overlay checks.
+     * Intentionally low to prevent test slowdown.
+     */
     private static WebDriverWait getShortWait(WebDriver driver) {
         return new WebDriverWait(driver, Duration.ofSeconds(1));
     }
 
-    private static Alert waitForAlert(WebDriver driver) {
-        return getWait(driver).until(ExpectedConditions.alertIsPresent());
-    }
-
-    // ==================== Browser Alerts ====================
+    // =========================================================================
+    // BROWSER ALERTS
+    // =========================================================================
 
     public static void acceptAlert(WebDriver driver) {
         try {
-            Alert alert = waitForAlert(driver);
-            logger.info("Alert text: " + alert.getText());
+            Alert alert = getWait(driver).until(ExpectedConditions.alertIsPresent());
+            logger.info("Alert text: {}", alert.getText());
             alert.accept();
             logger.info("Alert accepted");
         } catch (Exception e) {
-            logger.debug("Failed to accept alert: " + e.getMessage());
+            logger.debug("No alert to accept: {}", e.getMessage());
         }
     }
 
     public static void dismissAlert(WebDriver driver) {
         try {
-            Alert alert = waitForAlert(driver);
-            logger.info("Alert text: " + alert.getText());
+            Alert alert = getWait(driver).until(ExpectedConditions.alertIsPresent());
+            logger.info("Alert text: {}", alert.getText());
             alert.dismiss();
-            logger.warn("Alert dismissed");
+            logger.info("Alert dismissed");
         } catch (Exception e) {
-            logger.debug("Failed to dismiss alert: " + e.getMessage());
+            logger.debug("No alert to dismiss: {}", e.getMessage());
         }
     }
 
     public static String getAlertText(WebDriver driver) {
         try {
-            Alert alert = waitForAlert(driver);
+            Alert alert = getWait(driver).until(ExpectedConditions.alertIsPresent());
             String text = alert.getText();
-            logger.info("Alert text retrieved: " + text);
+            logger.info("Alert text: {}", text);
             return text;
         } catch (Exception e) {
-            logger.debug("Failed to get alert text: " + e.getMessage());
+            logger.debug("No alert present: {}", e.getMessage());
             return null;
         }
     }
 
     public static boolean isAlertPresent(WebDriver driver) {
         try {
-            getWait(driver).until(ExpectedConditions.alertIsPresent());
+            getShortWait(driver).until(ExpectedConditions.alertIsPresent());
             return true;
         } catch (Exception e) {
             return false;
@@ -100,97 +110,89 @@ public class AlertHandler {
         }
     }
 
-    // ==================== UI Overlay Handling ====================
+    // =========================================================================
+    // UI OVERLAY HANDLING
+    // =========================================================================
 
     /**
-     * Close cookie consent popup if present
-     * Safe - does not throw exceptions if not found
+     * Finds and clicks the first visible consent/cookie button.
+     * Uses short 1-second timeout per button to stay fast.
      */
     public static void closeConsentPopupIfPresent(WebDriver driver) {
         try {
-            for (int i = 0; i < CONSENT_BUTTONS.length; i++) {
-                By button = CONSENT_BUTTONS[i];
+            for (By buttonLocator : CONSENT_BUTTONS) {
                 try {
-                    WebElement element;
-                    if (i == 0) {
-                        // Prioritize first locator with WebDriverWait (short timeout)
-                        element = getShortWait(driver).until(ExpectedConditions.elementToBeClickable(button));
-                    } else {
-                        element = driver.findElement(button);
-                    }
-                    if (element.isDisplayed()) {
-                        logger.debug("Found consent button, closing: " + button);
-                        element.click();
-                        logger.info("Closed consent popup");
+                    WebElement button = getShortWait(driver)
+                            .until(ExpectedConditions.elementToBeClickable(buttonLocator));
+                    if (button.isDisplayed()) {
+                        button.click();
+                        logger.info("Consent popup closed via: {}", buttonLocator);
                         WaitUtils.waitForOverlayToDisappear(driver);
                         return;
                     }
                 } catch (NoSuchElementException | StaleElementReferenceException | TimeoutException ignored) {
-                    logger.debug("Consent button not found: " + button);
+                    // not found — try next locator
                 }
             }
+            logger.debug("No consent popup found");
         } catch (Exception e) {
-            logger.debug("Error closing consent popup: " + e.getMessage());
+            logger.debug("closeConsentPopupIfPresent error (safe): {}", e.getMessage());
         }
     }
 
     /**
-     * Close generic blocking overlays
-     * Safe - attempts Escape key if close button not found
+     * Tries to close any blocking overlay using Escape key.
      */
     public static void closeBlockingOverlayIfPresent(WebDriver driver) {
         try {
-            for (By overlay : BLOCKING_OVERLAYS) {
+            for (By overlayLocator : BLOCKING_OVERLAYS) {
                 try {
-                    WebElement element = driver.findElement(overlay);
-                    if (element.isDisplayed()) {
-                        logger.debug("Found blocking overlay: " + overlay);
-                        try {
-                            element.sendKeys(Keys.ESCAPE);
-                            logger.info("Closed overlay using Escape key");
-                            return;
-                        } catch (Exception e) {
-                            logger.debug("Escape key didn't work, ignoring: " + e.getMessage());
-                        }
+                    WebElement overlay = driver.findElement(overlayLocator);
+                    if (overlay.isDisplayed()) {
+                        overlay.sendKeys(Keys.ESCAPE);
+                        logger.info("Closed overlay via Escape: {}", overlayLocator);
+                        return;
                     }
                 } catch (NoSuchElementException | StaleElementReferenceException ignored) {
-                    logger.debug("Overlay not found: " + overlay);
+                    // not found — try next locator
                 }
             }
+            logger.debug("No blocking overlay found");
         } catch (Exception e) {
-            logger.debug("Error closing overlay: " + e.getMessage());
+            logger.debug("closeBlockingOverlayIfPresent error (safe): {}", e.getMessage());
         }
     }
 
     /**
-     * Hide all ad iframes that may block element interactions
+     * Hides all ad iframes via JavaScript so they don't intercept clicks.
      */
     public static void hideAdIframes(WebDriver driver) {
         try {
-            JavascriptExecutor js = (JavascriptExecutor) driver;
-            js.executeScript(
-                "var iframes = document.querySelectorAll('iframe');" +
-                "iframes.forEach(function(f){ f.style.display='none'; });"
+            ((JavascriptExecutor) driver).executeScript(
+                    "var iframes = document.querySelectorAll('iframe');" +
+                            "iframes.forEach(function(f){ f.style.display='none'; });"
             );
+            logger.debug("Ad iframes hidden");
         } catch (Exception e) {
-            // safe - ignore
+            logger.debug("hideAdIframes error (safe): {}", e.getMessage());
         }
     }
 
     /**
-     * Handle all UI blockers (alerts + overlays)
-     * Safe operation - always completes without throwing exceptions
+     * Master method — handles all types of blockers in sequence.
+     *
+     * Call this ONCE after page navigation, never before every interaction.
      */
     public static void handleAllBlockersIfPresent(WebDriver driver) {
         try {
-            logger.debug("Checking for UI blockers...");
+            logger.debug("Handling UI blockers...");
             acceptAlertIfPresent(driver);
             closeConsentPopupIfPresent(driver);
             closeBlockingOverlayIfPresent(driver);
             hideAdIframes(driver);
-            logger.debug("UI blocker check complete");
+            logger.debug("UI blocker handling complete");
         } catch (Exception e) {
-            logger.warn("Unexpected error during blocker handling: " + e.getMessage());
+            logger.warn("Unexpected error in handleAllBlockersIfPresent (safe): {}", e.getMessage());
         }
     }
 }

@@ -1,10 +1,10 @@
 package org.example.tests;
 
 import org.example.base.BaseTest;
+import org.example.pages.CartPage;
 import org.example.pages.HomePage;
 import org.example.utils.ConfigReader;
 import org.example.utils.TestDataReader;
-import org.openqa.selenium.By;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -16,121 +16,106 @@ import io.qameta.allure.SeverityLevel;
 public class HomeTests extends BaseTest {
 
     private static final Logger logger = LogManager.getLogger(HomeTests.class);
+
     private HomePage homePage;
 
     @BeforeMethod(alwaysRun = true, dependsOnMethods = "setup")
-    public void initPage() {
+    public void initPages() {
         homePage = new HomePage();
-        logger.info("HomePage initialized");
+        logger.info("HomeTests pages initialized");
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // TC07 - Verify Test Cases page
+    // ─────────────────────────────────────────────────────────────────────────
     @Test(groups = {"smoke", "regression", "priority:high"})
     @Severity(SeverityLevel.NORMAL)
     public void TC07_VerifyTestCasesPage() {
         logger.info("Starting TC07_VerifyTestCasesPage");
 
-        logger.info("Navigating to test cases page");
-        getDriver().get(ConfigReader.getBaseUrl() + "/test_cases");
+        getDriver().get(ConfigReader.getBaseUrl() + "test_cases");
 
-        String pageTitle = getDriver().getTitle();
-        logger.info("Current page title: " + pageTitle);
+        String title = getDriver().getTitle();
+        Assert.assertTrue(title.contains("Test Cases"),
+                "TC07 FAILED — Page title should contain 'Test Cases'. Actual: " + title);
 
-        Assert.assertTrue(
-                pageTitle.contains("Test Cases"),
-                "Page title should contain 'Test Cases'"
-        );
-
-        logger.info("TC07 completed successfully");
+        logger.info("TC07 PASSED — title: {}", title);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // TC10 - Verify subscription in Home page
+    // ─────────────────────────────────────────────────────────────────────────
     @Test(groups = {"functional", "regression", "priority:high"})
     @Severity(SeverityLevel.NORMAL)
     public void TC10_VerifySubscriptionInHomePage() {
         logger.info("Starting TC10_VerifySubscriptionInHomePage");
 
-        String testEmail = TestDataReader.getRequiredProperty("subscription.email");
-        logger.info("Test email for subscription: " + testEmail);
-
-        logger.info("Scrolling to footer section");
         homePage.scrollDownToFooter();
-
-        logger.info("Entering subscription email: " + testEmail);
-        homePage.enterSubscriptionEmail(testEmail);
+        homePage.enterSubscriptionEmail(TestDataReader.getRequiredProperty("subscription.email"));
         homePage.clickSubscribeButton();
 
-        String successMessage = homePage.getSubscriptionSuccessMessage();
-        logger.info("Subscription message: " + successMessage);
+        String msg = homePage.getSubscriptionSuccessMessage();
+        Assert.assertTrue(msg.toLowerCase().contains("success"),
+                "TC10 FAILED — Subscription success message not found. Actual: " + msg);
 
-        Assert.assertTrue(
-                successMessage.toLowerCase().contains("success"),
-                "Success message should contain 'success'"
-        );
-
-        logger.info("TC10 completed successfully");
+        logger.info("TC10 PASSED — message: {}", msg);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // TC22 - Add to cart from recommended items
+    // ─────────────────────────────────────────────────────────────────────────
     @Test(groups = {"functional", "regression", "priority:high"})
     @Severity(SeverityLevel.NORMAL)
     public void TC22_AddToCartFromRecommendedItems() {
         logger.info("Starting TC22_AddToCartFromRecommendedItems");
 
-        logger.info("Scrolling to recommended items section");
         homePage.scrollDownToFooter();
-
-        logger.info("Adding first recommended item to cart");
         homePage.addFirstRecommendedItemToCart();
 
-        // verify we are still on home page or cart modal appeared
-        String currentUrl = getDriver().getCurrentUrl();
-        Assert.assertTrue(
-                currentUrl.contains("automationexercise.com"),
-                "Should still be on the site after adding to cart"
-        );
+        getDriver().get(ConfigReader.getBaseUrl() + "view_cart");
 
-        logger.info("TC22 completed successfully");
+        CartPage cartPage = new CartPage();
+        int itemCount = cartPage.getCartItemCount();
+        Assert.assertTrue(itemCount > 0,
+                "TC22 FAILED — Cart should have at least one item after adding recommended product");
+
+        logger.info("TC22 PASSED — cart items: {}", itemCount);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // TC25 - Scroll up using arrow button
+    // ─────────────────────────────────────────────────────────────────────────
     @Test(groups = {"functional", "priority:medium"})
     @Severity(SeverityLevel.MINOR)
     public void TC25_ScrollUpWithArrowButton() {
         logger.info("Starting TC25_ScrollUpWithArrowButton");
 
-        logger.info("Scrolling down to bottom of page");
         homePage.scrollDownToFooter();
-
-        logger.info("Clicking scroll up arrow button");
         homePage.clickScrollUpArrowButton();
 
-        boolean isScrolledToTop = homePage.isScrolledToTop();
-        logger.info("Page scroll position verified: " + isScrolledToTop);
+        // نستنى شوية عشان الـ scroll animation يخلص
+        try { Thread.sleep(800); } catch (InterruptedException ignored) {}
 
-        Assert.assertTrue(
-                homePage.isDisplayed(By.cssSelector("a[href='/products']")),
-                "Page should be scrolled to top after clicking arrow button"
-        );
+        Assert.assertTrue(homePage.isNavigationVisible(),
+                "TC25 FAILED — Products nav link should be visible after scrolling to top");
 
-        logger.info("TC25 completed successfully");
+        logger.info("TC25 PASSED — page scrolled to top via arrow button");
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // TC26 - Scroll up without arrow button (JavaScript)
+    // ─────────────────────────────────────────────────────────────────────────
     @Test(groups = {"functional", "priority:medium"})
     @Severity(SeverityLevel.MINOR)
     public void TC26_ScrollUpWithoutArrowButton() {
         logger.info("Starting TC26_ScrollUpWithoutArrowButton");
 
-        logger.info("Scrolling down to bottom of page");
         homePage.scrollDownToFooter();
+        homePage.scrollPageToTop();
 
-        logger.info("Scrolling to top using JavaScript");
-        homePage.scrollToTop();
+        Assert.assertTrue(homePage.isScrolledToTop(),
+                "TC26 FAILED — Page should be at scroll position 0 after scrollToTop()");
 
-        boolean isScrolledToTop = homePage.isScrolledToTop();
-        logger.info("Page scroll position verified: " + isScrolledToTop);
-
-        Assert.assertTrue(
-                isScrolledToTop,
-                "Page should be scrolled to top"
-        );
-
-        logger.info("TC26 completed successfully");
+        logger.info("TC26 PASSED — page scrolled to top via JavaScript");
     }
 }

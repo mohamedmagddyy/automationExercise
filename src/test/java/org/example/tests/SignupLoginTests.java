@@ -17,38 +17,36 @@ import io.qameta.allure.SeverityLevel;
 public class SignupLoginTests extends BaseTest {
 
     private static final Logger logger = LogManager.getLogger(SignupLoginTests.class);
+
     private SignupLoginPage page;
     private HomePage homePage;
 
     @BeforeMethod(alwaysRun = true, dependsOnMethods = "setup")
-    public void initPage() {
+    public void initPages() {
+        page     = new SignupLoginPage();
         homePage = new HomePage();
-        page = new SignupLoginPage();
-        logger.info("SignupLoginPage initialized");
+        logger.info("SignupLoginTests pages initialized");
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // TC01 - Register new user
+    // ─────────────────────────────────────────────────────────────────────────
     @Test(groups = {"smoke", "regression", "priority:critical"})
     @Severity(SeverityLevel.CRITICAL)
     public void TC01_RegisterUser() {
         logger.info("Starting TC01_RegisterUser");
 
-        // Always use generated email to avoid duplicate registration failure
         String email = TestDataReader.generateDynamicEmail();
         String name  = TestDataReader.getRequiredProperty("register.name");
-        logger.info("Test Data - Name: " + name + ", Email: " + email);
 
-        logger.info("Opening login page");
-        getDriver().get(ConfigReader.getBaseUrl() + "/login");
+        getDriver().get(ConfigReader.getBaseUrl() + "login");
 
-        logger.info("Entering signup details");
         page.enterSignupName(name);
         page.enterSignupEmail(email);
         page.clickSignupButton();
 
-        logger.info("Filling registration form");
         page.fillRegistrationForm(
                 TestDataReader.getRequiredProperty("register.title"),
-//                email,
                 TestDataReader.getRequiredProperty("register.password"),
                 TestDataReader.getRequiredProperty("register.day"),
                 TestDataReader.getRequiredProperty("register.month"),
@@ -67,113 +65,111 @@ public class SignupLoginTests extends BaseTest {
 
         page.clickCreateAccountButton();
 
-        logger.info("Verifying account creation");
         String msg = page.getAccountCreatedMessage();
-
         Assert.assertEquals(msg, "ACCOUNT CREATED!",
-                "Account Created message mismatch! Actual: " + msg);
+                "TC01 FAILED — Account Created message mismatch. Actual: " + msg);
 
-        logger.info("Account Created message verified: " + msg);
+        logger.info("TC01 PASSED — message: {}", msg);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // TC02 - Login with correct credentials
+    // ─────────────────────────────────────────────────────────────────────────
     @Test(groups = {"smoke", "regression", "priority:critical"})
     @Severity(SeverityLevel.CRITICAL)
     public void TC02_LoginWithCorrectCredentials() {
         logger.info("Starting TC02_LoginWithCorrectCredentials");
-        logger.info("Test Data - Email: " + TestDataReader.getRequiredProperty("valid.email"));
 
-        logger.info("Opening login page");
-        getDriver().get(ConfigReader.getBaseUrl() + "/login");
+        getDriver().get(ConfigReader.getBaseUrl() + "login");
 
-        logger.info("Logging in with valid credentials");
         page.enterLoginEmail(TestDataReader.getRequiredProperty("valid.email"));
         page.enterLoginPassword(TestDataReader.getRequiredProperty("valid.password"));
         page.clickLoginButton();
 
-        logger.info("Verifying login success");
         String user = page.getLoggedInUsername();
-        Assert.assertFalse(user.isEmpty(), "Username should not be empty after login");
+        Assert.assertFalse(user.isEmpty(),
+                "TC02 FAILED — Logged-in username is empty after login");
 
-
-        logger.info("TC02 completed successfully");
+        logger.info("TC02 PASSED — logged in as: {}", user);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // TC03 - Login with incorrect credentials
+    // ─────────────────────────────────────────────────────────────────────────
     @Test(groups = {"functional", "regression", "priority:high"})
     @Severity(SeverityLevel.NORMAL)
     public void TC03_LoginWithIncorrectCredentials() {
         logger.info("Starting TC03_LoginWithIncorrectCredentials");
 
-        logger.info("Opening login page");
-        getDriver().get(ConfigReader.getBaseUrl() + "/login");
+        getDriver().get(ConfigReader.getBaseUrl() + "login");
 
-        logger.info("Logging in with invalid credentials");
         page.enterLoginEmail(TestDataReader.getRequiredProperty("invalid.email"));
         page.enterLoginPassword(TestDataReader.getRequiredProperty("invalid.password"));
         page.clickLoginButton();
 
-        logger.info("Verifying error message");
         String error = page.getLoginErrorMessage();
-        Assert.assertEquals(error, "Your email or password is incorrect!");
+        Assert.assertEquals(error, "Your email or password is incorrect!",
+                "TC03 FAILED — Error message mismatch. Actual: " + error);
 
-        logger.info("TC03 completed successfully");
+        logger.info("TC03 PASSED — error message verified");
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // TC04 - Logout user
+    // ─────────────────────────────────────────────────────────────────────────
     @Test(groups = {"smoke", "regression", "priority:high"})
     @Severity(SeverityLevel.NORMAL)
     public void TC04_LogoutUser() {
         logger.info("Starting TC04_LogoutUser");
 
-        logger.info("Opening login page");
-        getDriver().get(ConfigReader.getBaseUrl() + "/login");
+        getDriver().get(ConfigReader.getBaseUrl() + "login");
 
-        logger.info("Logging in");
         page.enterLoginEmail(TestDataReader.getRequiredProperty("valid.email"));
         page.enterLoginPassword(TestDataReader.getRequiredProperty("valid.password"));
         page.clickLoginButton();
 
-        logger.info("Logging out");
         page.clickLogoutButton();
 
-        logger.info("Verifying logout");
-        logger.info("Verifying logout");
-        Assert.assertTrue(
-                getDriver().getCurrentUrl().contains("/login") ||
-                        homePage.isDisplayed(By.cssSelector("a[href='/login']")),
-                "Should be redirected to login page or Signup/Login button visible"
-        );
+        boolean onLoginPage   = getDriver().getCurrentUrl().contains("/login");
+        boolean loginBtnShown = homePage.isDisplayed(By.cssSelector("a[href='/login']"));
 
-        logger.info("TC04 completed successfully");
+        Assert.assertTrue(onLoginPage || loginBtnShown,
+                "TC04 FAILED — Should be on login page or show login button after logout");
+
+        logger.info("TC04 PASSED — user logged out successfully");
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // TC05 - Register with existing email
+    // ─────────────────────────────────────────────────────────────────────────
     @Test(groups = {"functional", "regression", "priority:high"})
     @Severity(SeverityLevel.NORMAL)
     public void TC05_RegisterWithExistingEmail() {
         logger.info("Starting TC05_RegisterWithExistingEmail");
 
-        logger.info("Opening login page");
-        getDriver().get(ConfigReader.getBaseUrl() + "/login");
+        getDriver().get(ConfigReader.getBaseUrl() + "login");
 
-        logger.info("Attempting to register with existing email");
         page.enterSignupName(TestDataReader.getRequiredProperty("register.name"));
         page.enterSignupEmail(TestDataReader.getRequiredProperty("valid.email"));
         page.clickSignupButton();
 
-        logger.info("Verifying error message");
         String msg = page.getSignupErrorMessage();
-        Assert.assertEquals(msg, "Email Address already exist!");
+        Assert.assertEquals(msg, "Email Address already exist!",
+                "TC05 FAILED — Signup error message mismatch. Actual: " + msg);
 
-        logger.info("TC05 completed successfully");
+        logger.info("TC05 PASSED — existing email error verified");
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // TC06 - Contact Us form
+    // ─────────────────────────────────────────────────────────────────────────
     @Test(groups = {"functional", "regression", "priority:medium"})
     @Severity(SeverityLevel.MINOR)
     public void TC06_ContactUsForm() {
         logger.info("Starting TC06_ContactUsForm");
 
-        logger.info("Opening contact page");
-        getDriver().get(ConfigReader.getBaseUrl() + "/contact_us");
+        getDriver().get(ConfigReader.getBaseUrl() + "contact_us");
 
-        logger.info("Submitting contact form");
         page.fillContactForm(
                 TestDataReader.getRequiredProperty("contact.name"),
                 TestDataReader.getRequiredProperty("contact.email"),
@@ -182,10 +178,10 @@ public class SignupLoginTests extends BaseTest {
         );
         page.clickSubmitContactForm();
 
-        logger.info("Verifying success message");
         String msg = page.getContactSuccessMessage();
-        Assert.assertTrue(msg.contains("Success"));
+        Assert.assertTrue(msg.contains("Success"),
+                "TC06 FAILED — Contact success message not found. Actual: " + msg);
 
-        logger.info("TC06 completed successfully");
+        logger.info("TC06 PASSED — contact form submitted successfully");
     }
 }

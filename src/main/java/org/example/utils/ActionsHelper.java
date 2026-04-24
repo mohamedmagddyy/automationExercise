@@ -2,35 +2,56 @@ package org.example.utils;
 
 import org.openqa.selenium.*;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.Select;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+/**
+ * ActionsHelper — The single engine for ALL WebDriver interactions.
+ *
+ * Responsibilities:
+ *  - Wait (via WaitUtils)
+ *  - Scroll into view
+ *  - Interact (click / sendKeys / getText / select / hover / drag)
+ *  - JS fallback when element is not interactable
+ *
+ * AlertHandler is NOT called here — overlays are handled once per page
+ * navigation via BasePage.handleOverlaysOnce().
+ */
 public class ActionsHelper {
 
     private static final Logger logger = LogManager.getLogger(ActionsHelper.class);
 
-    // =====================
-    // CLICK ACTIONS
-    // =====================
+    // =========================================================================
+    // CLICK
+    // =========================================================================
 
     /**
-     * Safe click by locator — falls back to JS click if not interactable
+     * Click by locator.
+     * Flow: waitForClickability → scrollIntoView → click → fallback JS click
      */
     public static void click(WebDriver driver, By locator) {
         try {
-            WaitUtils.waitForClickability(driver, locator);
-            WebElement element = driver.findElement(locator);
+            WebElement element = WaitUtils.waitForClickability(driver, locator);
             scrollToElement(driver, element);
             element.click();
-            logger.info("Clicked: " + locator);
+            logger.info("Clicked: {}", locator);
         } catch (ElementNotInteractableException e) {
-            logger.warn("Element not interactable, retrying with JS click: " + locator);
+            logger.warn("Element not interactable on {}, retrying with JS click", locator);
             jsClick(driver, locator);
+        } catch (WebDriverException e) {
+            if (e.getMessage() != null && e.getMessage().contains("intercepted")) {
+                logger.warn("Click intercepted on {}, retrying with JS click", locator);
+                jsClick(driver, locator);
+            } else {
+                throw e;
+            }
         }
     }
 
     /**
-     * Safe click by WebElement — falls back to JS click if not interactable
+     * Click by WebElement.
+     * Flow: waitForClickability → scrollIntoView → click → fallback JS click
      */
     public static void click(WebDriver driver, WebElement element) {
         try {
@@ -39,204 +60,236 @@ public class ActionsHelper {
             element.click();
             logger.info("Clicked WebElement");
         } catch (ElementNotInteractableException e) {
-            logger.warn("Element not interactable, retrying with JS click");
+            logger.warn("Element not interactable on WebElement, retrying with JS click");
             jsClick(driver, element);
+        } catch (WebDriverException e) {
+            if (e.getMessage() != null && e.getMessage().contains("intercepted")) {
+                logger.warn("Click intercepted on WebElement, retrying with JS click");
+                jsClick(driver, element);
+            } else {
+                throw e;
+            }
         }
     }
 
-    // =====================
-    // SEND KEYS ACTIONS
-    // =====================
+    // =========================================================================
+    // SEND KEYS
+    // =========================================================================
 
     /**
-     * Safe sendKeys by locator
+     * Type into field by locator.
+     * Flow: waitForVisibility → scrollIntoView → clear → sendKeys → fallback JS setValue
      */
     public static void sendKeys(WebDriver driver, By locator, String text) {
         try {
-            WaitUtils.waitForVisibility(driver, locator);
-            WebElement element = driver.findElement(locator);
-            scrollToElement(driver, element);
-            element.clear();
-            element.sendKeys(text);
-            logger.info("Typed '" + text + "' in: " + locator);
-        } catch (ElementNotInteractableException e) {
-            logger.warn("Element not interactable on sendKeys, retrying with JS: " + locator);
             WebElement element = WaitUtils.waitForVisibility(driver, locator);
-            ((JavascriptExecutor) driver).executeScript(
-                    "arguments[0].value = arguments[1];", element, text);
-            logger.info("Successfully typed using JS: " + text);
+            scrollToElement(driver, element);
+            clearField(element);
+            element.sendKeys(text);
+            logger.info("Typed '{}' into: {}", text, locator);
+        } catch (ElementNotInteractableException e) {
+            logger.warn("sendKeys failed on {}, retrying with JS setValue — reason: {}", locator, e.getMessage());
+            jsSetValue(driver, locator, text);
         }
     }
 
     /**
-     * Safe sendKeys by WebElement
+     * Type into field by WebElement.
+     * Flow: waitForVisibility → scrollIntoView → clear → sendKeys → fallback JS setValue
      */
     public static void sendKeys(WebDriver driver, WebElement element, String text) {
         try {
             WaitUtils.waitForVisibility(driver, element);
             scrollToElement(driver, element);
-            element.clear();
+            clearField(element);
             element.sendKeys(text);
-            logger.info("Typed in WebElement");
+            logger.info("Typed '{}' into WebElement", text);
         } catch (ElementNotInteractableException e) {
-            logger.warn("Element not interactable on sendKeys WebElement, retrying with JS");
-            ((JavascriptExecutor) driver).executeScript(
-                    "arguments[0].value = arguments[1];", element, text);
-            logger.info("Successfully typed using JS in WebElement");
+            logger.warn("sendKeys failed on WebElement, retrying with JS setValue — reason: {}", e.getMessage());
+            ((JavascriptExecutor) driver).executeScript("arguments[0].value = arguments[1];", element, text);
+            logger.info("JS setValue succeeded for WebElement");
         }
     }
 
-    // =====================
-    // GET TEXT
-    // =====================
-
     /**
-     * Get visible text from element by locator — waits for visibility first
+     * Safe field clear: clear() + select-all + delete to handle tricky inputs.
      */
+    private static void clearField(WebElement element) {
+        element.clear();
+        element.sendKeys(Keys.chord(Keys.CONTROL, "a"));
+        element.sendKeys(Keys.DELETE);
+    }
+
+    // =========================================================================
+    // GET TEXT
+    // =========================================================================
+
     public static String getText(WebDriver driver, By locator) {
         WaitUtils.waitForVisibility(driver, locator);
         String text = driver.findElement(locator).getText().trim();
-        logger.info("Got text: " + text);
+        logger.info("getText from {}: '{}'", locator, text);
         return text;
     }
 
-    /**
-     * Get visible text from WebElement — waits for visibility first
-     */
     public static String getText(WebDriver driver, WebElement element) {
         WaitUtils.waitForVisibility(driver, element);
         String text = element.getText().trim();
-        logger.info("Got text: " + text);
+        logger.info("getText from WebElement: '{}'", text);
         return text;
     }
 
-    // =====================
+    // =========================================================================
     // DISPLAY CHECK
-    // =====================
+    // =========================================================================
 
-    /**
-     * Check if element is displayed by locator — returns false on exception
-     */
     public static boolean isDisplayed(WebDriver driver, By locator) {
         try {
             return driver.findElement(locator).isDisplayed();
-        } catch (Exception e) {
+        } catch (NoSuchElementException | StaleElementReferenceException e) {
             return false;
         }
     }
 
-    /**
-     * Check if WebElement is displayed — returns false on exception
-     */
     public static boolean isDisplayed(WebDriver driver, WebElement element) {
         try {
             return element.isDisplayed();
-        } catch (Exception e) {
+        } catch (NoSuchElementException | StaleElementReferenceException e) {
             return false;
         }
     }
 
-    // =====================
+    // =========================================================================
     // CLEAR
-    // =====================
+    // =========================================================================
 
-    /**
-     * Clear element by locator
-     */
     public static void clear(WebDriver driver, By locator) {
         WaitUtils.waitForVisibility(driver, locator);
-        driver.findElement(locator).clear();
-        logger.info("Cleared element: " + locator);
+        clearField(driver.findElement(locator));
+        logger.info("Cleared field: {}", locator);
     }
 
-    // =====================
-    // SCROLL ACTIONS
-    // =====================
+    // =========================================================================
+    // SELECT DROPDOWNS
+    // =========================================================================
 
     /**
-     * Scroll element into view
+     * Select dropdown option by value attribute.
+     */
+    public static void selectByValue(WebDriver driver, By locator, String value) {
+        WaitUtils.waitForVisibility(driver, locator);
+        Select select = new Select(driver.findElement(locator));
+        select.selectByValue(value);
+        logger.info("Selected by value '{}' from: {}", value, locator);
+    }
+
+    /**
+     * Select dropdown option by visible text.
+     */
+    public static void selectByVisibleText(WebDriver driver, By locator, String text) {
+        WaitUtils.waitForVisibility(driver, locator);
+        Select select = new Select(driver.findElement(locator));
+        select.selectByVisibleText(text);
+        logger.info("Selected by text '{}' from: {}", text, locator);
+    }
+
+    /**
+     * Select dropdown option by index.
+     */
+    public static void selectByIndex(WebDriver driver, By locator, int index) {
+        WaitUtils.waitForVisibility(driver, locator);
+        Select select = new Select(driver.findElement(locator));
+        select.selectByIndex(index);
+        logger.info("Selected by index '{}' from: {}", index, locator);
+    }
+
+    // =========================================================================
+    // SCROLL
+    // =========================================================================
+
+    /**
+     * Scroll element to center of viewport.
      */
     public static void scrollToElement(WebDriver driver, WebElement element) {
         try {
             ((JavascriptExecutor) driver).executeScript(
-                    "arguments[0].scrollIntoView({block: 'center'});", element);
+                    "arguments[0].scrollIntoView({block: 'center', inline: 'nearest'});", element);
             logger.debug("Scrolled element into view");
         } catch (Exception e) {
-            logger.warn("Could not scroll to element: " + e.getMessage());
+            logger.warn("scrollToElement failed: {}", e.getMessage());
         }
     }
 
     /**
-     * Scroll to bottom then wait for overlays
+     * Scroll element to center by locator.
+     */
+    public static void scrollToElement(WebDriver driver, By locator) {
+        WebElement element = WaitUtils.waitForVisibility(driver, locator);
+        scrollToElement(driver, element);
+    }
+
+    /**
+     * Scroll to bottom of page.
      */
     public static void scrollToBottom(WebDriver driver) {
         ((JavascriptExecutor) driver).executeScript("window.scrollTo(0, document.body.scrollHeight)");
-        WaitUtils.waitForOverlayToDisappear(driver);
         logger.info("Scrolled to bottom");
     }
 
     /**
-     * Scroll to top then wait for overlays
+     * Scroll to top of page.
      */
     public static void scrollToTop(WebDriver driver) {
         ((JavascriptExecutor) driver).executeScript("window.scrollTo(0, 0)");
-        WaitUtils.waitForOverlayToDisappear(driver);
         logger.info("Scrolled to top");
     }
 
     /**
-     * Scroll by specific pixels
+     * Scroll by pixel offset.
      */
     public static void scrollBy(WebDriver driver, int x, int y) {
-        ((JavascriptExecutor) driver).executeScript("window.scrollBy(" + x + "," + y + ")");
-        logger.info("Scrolled by x=" + x + ", y=" + y);
+        ((JavascriptExecutor) driver).executeScript("window.scrollBy(arguments[0], arguments[1]);", x, y);
+        logger.info("Scrolled by x={}, y={}", x, y);
     }
 
     /**
-     * Scroll to element and click it
+     * Get current vertical scroll position.
      */
-    public static void scrollToElementAndClick(WebDriver driver, WebElement element) {
-        scrollToElement(driver, element);
-        WaitUtils.waitForClickability(driver, element);
-        element.click();
-        logger.info("Scrolled to element and clicked");
+    public static long getScrollPositionY(WebDriver driver) {
+        return (long) ((JavascriptExecutor) driver).executeScript("return window.pageYOffset;");
     }
 
     /**
-     * Scroll to element, wait for visibility, return it
+     * Check if page is scrolled to the very top.
      */
-    public static WebElement scrollAndWait(WebDriver driver, By locator) {
-        WebElement element = WaitUtils.waitForVisibility(driver, locator);
-        scrollToElement(driver, element);
-        WaitUtils.waitForVisibility(driver, element);
-        return element;
+    public static boolean isScrolledToTop(WebDriver driver) {
+        return getScrollPositionY(driver) == 0;
     }
 
-    // =====================
-    // HOVER ACTIONS
-    // =====================
+    // =========================================================================
+    // HOVER
+    // =========================================================================
 
     public static void hoverOverElement(WebDriver driver, WebElement element) {
         WaitUtils.waitForVisibility(driver, element);
         new Actions(driver).moveToElement(element).perform();
-        logger.info("Hovered over element");
-    }
-
-    public static void hoverAndClick(WebDriver driver, WebElement element) {
-        WaitUtils.waitForVisibility(driver, element);
-        new Actions(driver).moveToElement(element).click().perform();
-        logger.info("Hovered and clicked element");
+        logger.info("Hovered over WebElement");
     }
 
     public static void hoverOverElement(WebDriver driver, By locator) {
         WebElement element = WaitUtils.waitForVisibility(driver, locator);
         new Actions(driver).moveToElement(element).perform();
-        logger.info("Hovered over element: " + locator);
+        logger.info("Hovered over: {}", locator);
     }
 
-    // =====================
+    public static void hoverAndClick(WebDriver driver, WebElement element) {
+        WaitUtils.waitForVisibility(driver, element);
+        new Actions(driver).moveToElement(element).click().perform();
+        logger.info("Hovered and clicked WebElement");
+    }
+
+    // =========================================================================
     // DRAG AND DROP
-    // =====================
+    // =========================================================================
 
     public static void dragAndDrop(WebDriver driver, WebElement source, WebElement target) {
         WaitUtils.waitForVisibility(driver, source);
@@ -245,14 +298,14 @@ public class ActionsHelper {
         logger.info("Drag and drop performed");
     }
 
-    // =====================
-    // KEYBOARD ACTIONS
-    // =====================
+    // =========================================================================
+    // KEYBOARD
+    // =========================================================================
 
     public static void pressKey(WebDriver driver, WebElement element, Keys key) {
         WaitUtils.waitForVisibility(driver, element);
         new Actions(driver).sendKeys(element, key).perform();
-        logger.info("Pressed key: " + key.name());
+        logger.info("Pressed key: {}", key.name());
     }
 
     public static void pressEnter(WebDriver driver, WebElement element) {
@@ -268,27 +321,25 @@ public class ActionsHelper {
         logger.info("Pressed Escape");
     }
 
-    // =====================
-    // JAVASCRIPT ACTIONS
-    // =====================
+    // =========================================================================
+    // JAVASCRIPT HELPERS
+    // =========================================================================
 
     public static void jsClick(WebDriver driver, WebElement element) {
         ((JavascriptExecutor) driver).executeScript("arguments[0].click();", element);
-        logger.info("JS click performed");
+        logger.info("JS click on WebElement");
     }
 
     public static void jsClick(WebDriver driver, By locator) {
         WebElement element = WaitUtils.waitForVisibility(driver, locator);
         ((JavascriptExecutor) driver).executeScript("arguments[0].click();", element);
-        logger.info("JS click performed on: " + locator);
+        logger.info("JS click on: {}", locator);
     }
 
-    public static long getScrollPositionY(WebDriver driver) {
-        return (long) ((JavascriptExecutor) driver).executeScript("return window.pageYOffset;");
-    }
-
-    public static boolean isScrolledToTop(WebDriver driver) {
-        return getScrollPositionY(driver) == 0;
+    public static void jsSetValue(WebDriver driver, By locator, String value) {
+        WebElement element = WaitUtils.waitForVisibility(driver, locator);
+        ((JavascriptExecutor) driver).executeScript("arguments[0].value = arguments[1];", element, value);
+        logger.info("JS setValue '{}' on: {}", value, locator);
     }
 
     public static void highlightElement(WebDriver driver, WebElement element) {
@@ -297,13 +348,13 @@ public class ActionsHelper {
                     "arguments[0].style.border='3px solid red'", element);
             logger.debug("Element highlighted");
         } catch (Exception e) {
-            logger.debug("Could not highlight element: " + e.getMessage());
+            logger.debug("Could not highlight element: {}", e.getMessage());
         }
     }
 
-    // =====================
+    // =========================================================================
     // DOUBLE / RIGHT CLICK
-    // =====================
+    // =========================================================================
 
     public static void doubleClick(WebDriver driver, WebElement element) {
         WaitUtils.waitForClickability(driver, element);

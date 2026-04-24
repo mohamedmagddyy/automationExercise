@@ -7,41 +7,41 @@
         <listener class-name="org.example.listeners.TestListener"/>
     </listeners>
 
-<!--    &lt;!&ndash; Chrome - Smoke Tests Suite &ndash;&gt;-->
-<!--    <test name="Chrome - Smoke Tests" preserve-order="true">-->
-<!--        <parameter name="browser" value="chrome"/>-->
-<!--        <groups>-->
-<!--            <run>-->
-<!--                <include name="smoke"/>-->
-<!--            </run>-->
-<!--        </groups>-->
-<!--        <classes>-->
-<!--            <class name="org.example.tests.SignupLoginTests"/>-->
-<!--            <class name="org.example.tests.HomeTests"/>-->
-<!--            <class name="org.example.tests.ProductsTests"/>-->
-<!--            <class name="org.example.tests.CartTests"/>-->
-<!--        </classes>-->
-<!--    </test>-->
+    <!-- Chrome - Smoke Tests Suite -->
+    <test name="Chrome - Smoke Tests" preserve-order="true">
+        <parameter name="browser" value="chrome"/>
+        <groups>
+            <run>
+                <include name="smoke"/>
+            </run>
+        </groups>
+        <classes>
+            <class name="org.example.tests.SignupLoginTests"/>
+            <class name="org.example.tests.HomeTests"/>
+            <class name="org.example.tests.ProductsTests"/>
+            <class name="org.example.tests.CartTests"/>
+        </classes>
+    </test>
 
-<!--    &lt;!&ndash; Edge - Regression Tests Suite &ndash;&gt;-->
-<!--    <test name="Edge - Regression Tests" preserve-order="true">-->
-<!--        <parameter name="browser" value="edge"/>-->
-<!--        <groups>-->
-<!--            <run>-->
-<!--                <include name="regression"/>-->
-<!--            </run>-->
-<!--        </groups>-->
-<!--        <classes>-->
-<!--            <class name="org.example.tests.SignupLoginTests"/>-->
-<!--            <class name="org.example.tests.HomeTests"/>-->
-<!--            <class name="org.example.tests.ProductsTests"/>-->
-<!--            <class name="org.example.tests.CartTests"/>-->
-<!--        </classes>-->
-<!--    </test>-->
+    <!-- Chrome - Regression Tests Suite -->
+    <test name="Chrome - Regression Tests" preserve-order="true">
+        <parameter name="browser" value="chrome"/>
+        <groups>
+            <run>
+                <include name="regression"/>
+            </run>
+        </groups>
+        <classes>
+            <class name="org.example.tests.SignupLoginTests"/>
+            <class name="org.example.tests.HomeTests"/>
+            <class name="org.example.tests.ProductsTests"/>
+            <class name="org.example.tests.CartTests"/>
+        </classes>
+    </test>
 
-    <!-- Firefox - Functional Tests Suite -->
-    <test name="Firefox - Functional Tests" preserve-order="true">
-        <parameter name="browser" value="firefox"/>
+    <!-- Chrome - Functional Tests Suite -->
+    <test name="Chrome - Functional Tests" preserve-order="true">
+        <parameter name="browser" value="chrome"/>
         <groups>
             <run>
                 <include name="functional"/>
